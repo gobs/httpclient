@@ -5,6 +5,8 @@ import (
 	"log"
 	"net/url"
 
+	gohttp "net/http"
+
 	"reflect"
 )
 
@@ -67,4 +69,18 @@ func URLWithParams(base string, params map[string]interface{}) (u *url.URL) {
 
 	u.RawQuery = q.Encode()
 	return u
+}
+
+//
+// http.Get with params
+//
+func Get(url string, params map[string]interface{}) (*gohttp.Response, error) {
+	return gohttp.Get(URLWithParams(url, params).String())
+}
+
+//
+// http.Post with params
+//
+func Post(url string, params map[string]interface{}) (*gohttp.Response, error) {
+	return gohttp.PostForm(url, URLWithParams(url, params).Query())
 }
