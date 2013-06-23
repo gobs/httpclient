@@ -10,6 +10,10 @@ import (
 	"reflect"
 )
 
+type Response struct {
+	gohttp.Response
+}
+
 //
 // Check if the input value is a "primitive" that can be safely stringified
 //
@@ -29,11 +33,18 @@ func canStringify(v reflect.Value) bool {
 //
 // Given a base URL and a bag of parameteters returns the URL with the encoded parameters
 //
-func URLWithParams(base string, params map[string]interface{}) (u *url.URL) {
+func URLWithPathParams(base string, path string, params map[string]interface{}) (u *url.URL) {
 
 	u, err := url.Parse(base)
 	if err != nil {
 		log.Fatal(err)
+	}
+
+	if len(path) > 0 {
+		u, err = u.Parse(path)
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 
 	q := u.Query()
@@ -71,16 +82,31 @@ func URLWithParams(base string, params map[string]interface{}) (u *url.URL) {
 	return u
 }
 
+func URLWithParams(base string, params map[string]interface{}) (u *url.URL) {
+	return URLWithPathParams(base, "", params)
+}
+
+
 //
 // http.Get with params
 //
-func Get(url string, params map[string]interface{}) (*gohttp.Response, error) {
-	return gohttp.Get(URLWithParams(url, params).String())
+func Get(url string, params map[string]interface{}) (*Response, error) {
+	resp, err := gohttp.Get(URLWithParams(url, params).String())
+	if err == nil {
+		return &Response{*resp}, nil
+	} else {
+		return nil, err
+	}
 }
 
 //
 // http.Post with params
 //
-func Post(url string, params map[string]interface{}) (*gohttp.Response, error) {
-	return gohttp.PostForm(url, URLWithParams(url, params).Query())
+func Post(url string, params map[string]interface{}) (*Response, error) {
+	resp, err := gohttp.PostForm(url, URLWithParams(url, params).Query())
+	if err == nil {
+		return &Response{*resp}, nil
+	} else {
+		return nil, err
+	}
 }

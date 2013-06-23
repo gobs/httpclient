@@ -25,6 +25,11 @@ func TestURLWithParams(test *testing.T) {
 	test.Log(URLWithParams(GET_URL, params))
 }
 
+func TestURLWithPathParams(test *testing.T) {
+	test.Log(URLWithPathParams(GET_URL, "another", nil))
+	test.Log(URLWithPathParams(GET_URL + "/", "another", nil))
+}
+
 func TestGet(test *testing.T) {
 	resp, err := Get(GET_URL, nil)
 	if err != nil {
