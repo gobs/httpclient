@@ -3,21 +3,21 @@ package http
 import (
 	"io/ioutil"
 	"testing"
-	)
+)
 
 const (
-	GET_URL = "http://httpbin.org/get"
+	GET_URL  = "http://httpbin.org/get"
 	POST_URL = "http://httpbin.org/post"
-	)
+)
 
 var (
-	params = map[string]interface{} {
+	params = map[string]interface{}{
 		"string": "one",
-		"int": 2,
+		"int":    2,
 		"number": 3.14,
-		"bool": true,
-		"list": []string { "one", "two", "three" },
-		"empty": []int {},
+		"bool":   true,
+		"list":   []string{"one", "two", "three"},
+		"empty":  []int{},
 	}
 )
 
