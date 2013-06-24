@@ -63,3 +63,12 @@ func TestPostWithParams(test *testing.T) {
 		test.Log(string(body))
 	}
 }
+
+func TestGetJSON(test *testing.T) {
+	resp, err := Get(GET_URL, params)
+	if err != nil {
+		test.Error(err)
+	} else {
+		test.Log(resp.Json().Map())
+	}
+}

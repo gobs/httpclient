@@ -2,12 +2,14 @@ package http
 
 import (
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/url"
+	"reflect"
 
 	gohttp "net/http"
 
-	"reflect"
+	"github.com/gostuff/json"
 )
 
 type Response struct {
@@ -110,3 +112,21 @@ func Post(url string, params map[string]interface{}) (*Response, error) {
 		return nil, err
 	}
 }
+
+
+//
+//  Read the body
+//
+func (resp *Response) Content() []byte {
+	body, _ := ioutil.ReadAll(resp.Body)
+	resp.Body.Close()
+	return body
+}
+
+//
+//  Try to parse the response body as JSON
+//
+func (resp *Response) Json() *json.Jobj {
+	return json.Loads(resp.Content())
+}
+
