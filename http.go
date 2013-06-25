@@ -91,8 +91,8 @@ func URLWithParams(base string, params map[string]interface{}) (u *url.URL) {
 //
 // http.Get with params
 //
-func Get(url string, params map[string]interface{}) (*Response, error) {
-	resp, err := gohttp.Get(URLWithParams(url, params).String())
+func Get(urlStr string, params map[string]interface{}) (*Response, error) {
+	resp, err := gohttp.Get(URLWithParams(urlStr, params).String())
 	if err == nil {
 		return &Response{*resp}, nil
 	} else {
@@ -103,8 +103,8 @@ func Get(url string, params map[string]interface{}) (*Response, error) {
 //
 // http.Post with params
 //
-func Post(url string, params map[string]interface{}) (*Response, error) {
-	resp, err := gohttp.PostForm(url, URLWithParams(url, params).Query())
+func Post(urlStr string, params map[string]interface{}) (*Response, error) {
+	resp, err := gohttp.PostForm(urlStr, URLWithParams(urlStr, params).Query())
 	if err == nil {
 		return &Response{*resp}, nil
 	} else {
@@ -144,6 +144,7 @@ type HttpClient struct {
 func NewHttpClient(base string) (httpClient *HttpClient) {
 	httpClient = new(HttpClient)
 	httpClient.client = &gohttp.Client{}
+        httpClient.Headers = make(map[string]string)
 
         if u, err := url.Parse(base); err != nil {
             log.Fatal(err)
@@ -184,4 +185,20 @@ func (self *HttpClient) Do(req *gohttp.Request) (*Response, error) {
 	} else {
 		return nil, err
 	}
+}
+
+//
+// HttpClient.Get with params
+//
+func (self *HttpClient) Get(path string, params map[string]interface{}) (*Response, error) {
+    req := self.Request("GET", URLWithParams(path, params).String(), nil)
+    return self.Do(req)
+}
+
+func (self *HttpClient) Post(path string, contentType string, content io.Reader) (*Response, error) {
+    req := self.Request("POST", path, content)
+    if len(contentType) > 0 {
+        req.Header.Set("Content-Type", contentType)
+    }
+    return self.Do(req)
 }
