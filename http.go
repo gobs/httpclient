@@ -2,13 +2,13 @@ package http
 
 import (
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/url"
 	"reflect"
 
 	gohttp "net/http"
-
 	"github.com/gostuff/json"
 )
 
@@ -88,7 +88,6 @@ func URLWithParams(base string, params map[string]interface{}) (u *url.URL) {
 	return URLWithPathParams(base, "", params)
 }
 
-
 //
 // http.Get with params
 //
@@ -113,7 +112,6 @@ func Post(url string, params map[string]interface{}) (*Response, error) {
 	}
 }
 
-
 //
 //  Read the body
 //
@@ -130,3 +128,60 @@ func (resp *Response) Json() *json.Jobj {
 	return json.Loads(resp.Content())
 }
 
+////////////////////////////////////////////////////////////////////////
+//
+// http.Client with some defaults and stuff
+//
+
+type HttpClient struct {
+	client *gohttp.Client
+
+        BaseURL   *url.URL
+	UserAgent string
+	Headers   map[string]string
+}
+
+func NewHttpClient(base string) (httpClient *HttpClient) {
+	httpClient = new(HttpClient)
+	httpClient.client = &gohttp.Client{}
+
+        if u, err := url.Parse(base); err != nil {
+            log.Fatal(err)
+        } else {
+            httpClient.BaseURL = u
+        }
+
+	return
+}
+
+func (self *HttpClient) Request(method string, urlpath string, body io.Reader) (req *gohttp.Request) {
+        if u, err := self.BaseURL.Parse(urlpath); err != nil {
+            log.Fatal(err)
+        } else {
+            urlpath = u.String()
+        }
+
+	req, err := gohttp.NewRequest(method, urlpath, body)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if len(self.UserAgent) > 0 {
+		req.Header.Set("User-Agent", self.UserAgent)
+	}
+
+	for k, v := range self.Headers {
+		req.Header.Set(k, v)
+	}
+
+	return
+}
+
+func (self *HttpClient) Do(req *gohttp.Request) (*Response, error) {
+	resp, err := self.client.Do(req)
+	if err == nil {
+		return &Response{*resp}, nil
+	} else {
+		return nil, err
+	}
+}

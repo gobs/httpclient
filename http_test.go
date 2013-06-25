@@ -1,13 +1,15 @@
 package http
 
 import (
+        "bytes"
 	"io/ioutil"
 	"testing"
 )
 
 const (
-	GET_URL  = "http://httpbin.org/get"
-	POST_URL = "http://httpbin.org/post"
+        BASE_URL = "http://httpbin.org/"
+	GET_URL  = BASE_URL + "get"
+	POST_URL = BASE_URL + "post"
 )
 
 var (
@@ -71,4 +73,17 @@ func TestGetJSON(test *testing.T) {
 	} else {
 		test.Log(resp.Json().Map())
 	}
+}
+
+func TestClient(test *testing.T) {
+    client := NewHttpClient(BASE_URL)
+    client.UserAgent = "TestClient 0.1"
+
+    req := client.Request("GET", "get", nil)
+    resp, err := client.Do(req)
+    test.Log(err, string(resp.Content()))
+    
+    req = client.Request("POST", "post", bytes.NewBuffer([]byte("the body")))
+    resp, err = client.Do(req)
+    test.Log(err, string(resp.Content()))
 }
