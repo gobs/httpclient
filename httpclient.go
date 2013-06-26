@@ -125,7 +125,7 @@ func (resp *HttpResponse) Content() []byte {
 //
 //  Try to parse the response body as JSON
 //
-func (resp *HttpResponse) Json() *jujus.Jobj {
+func (resp *HttpResponse) Json() *jujus.Juju {
 	return jujus.Loads(resp.Content())
 }
 
