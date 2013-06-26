@@ -10,7 +10,7 @@ import (
 	"reflect"
 
 	"net/http"
-	"github.com/gobs/json"
+	"github.com/gobs/jujus"
 )
 
 type HttpResponse struct {
@@ -125,8 +125,8 @@ func (resp *HttpResponse) Content() []byte {
 //
 //  Try to parse the response body as JSON
 //
-func (resp *HttpResponse) Json() *json.Jobj {
-	return json.Loads(resp.Content())
+func (resp *HttpResponse) Json() *jujus.Jobj {
+	return jujus.Loads(resp.Content())
 }
 
 ////////////////////////////////////////////////////////////////////////
