@@ -1,4 +1,4 @@
-package http
+package httpclient
 
 import (
         "errors"
@@ -9,12 +9,12 @@ import (
 	"net/url"
 	"reflect"
 
-	gohttp "net/http"
-	"github.com/gostuff/json"
+	"net/http"
+	"github.com/gobs/json"
 )
 
-type Response struct {
-	gohttp.Response
+type HttpResponse struct {
+	http.Response
 }
 
 //
@@ -92,10 +92,10 @@ func URLWithParams(base string, params map[string]interface{}) (u *url.URL) {
 //
 // http.Get with params
 //
-func Get(urlStr string, params map[string]interface{}) (*Response, error) {
-	resp, err := gohttp.Get(URLWithParams(urlStr, params).String())
+func Get(urlStr string, params map[string]interface{}) (*HttpResponse, error) {
+	resp, err := http.Get(URLWithParams(urlStr, params).String())
 	if err == nil {
-		return &Response{*resp}, nil
+		return &HttpResponse{*resp}, nil
 	} else {
 		return nil, err
 	}
@@ -104,10 +104,10 @@ func Get(urlStr string, params map[string]interface{}) (*Response, error) {
 //
 // http.Post with params
 //
-func Post(urlStr string, params map[string]interface{}) (*Response, error) {
-	resp, err := gohttp.PostForm(urlStr, URLWithParams(urlStr, params).Query())
+func Post(urlStr string, params map[string]interface{}) (*HttpResponse, error) {
+	resp, err := http.PostForm(urlStr, URLWithParams(urlStr, params).Query())
 	if err == nil {
-		return &Response{*resp}, nil
+		return &HttpResponse{*resp}, nil
 	} else {
 		return nil, err
 	}
@@ -116,7 +116,7 @@ func Post(urlStr string, params map[string]interface{}) (*Response, error) {
 //
 //  Read the body
 //
-func (resp *Response) Content() []byte {
+func (resp *HttpResponse) Content() []byte {
 	body, _ := ioutil.ReadAll(resp.Body)
 	resp.Body.Close()
 	return body
@@ -125,7 +125,7 @@ func (resp *Response) Content() []byte {
 //
 //  Try to parse the response body as JSON
 //
-func (resp *Response) Json() *json.Jobj {
+func (resp *HttpResponse) Json() *json.Jobj {
 	return json.Loads(resp.Content())
 }
 
@@ -135,7 +135,7 @@ func (resp *Response) Json() *json.Jobj {
 //
 
 type HttpClient struct {
-	client *gohttp.Client
+	client *http.Client
 
         BaseURL   *url.URL
 	UserAgent string
@@ -144,7 +144,7 @@ type HttpClient struct {
 
 func NewHttpClient(base string) (httpClient *HttpClient) {
 	httpClient = new(HttpClient)
-	httpClient.client = &gohttp.Client{CheckRedirect: httpClient.checkRedirect}
+	httpClient.client = &http.Client{CheckRedirect: httpClient.checkRedirect}
         httpClient.Headers = make(map[string]string)
 
         if u, err := url.Parse(base); err != nil {
@@ -156,7 +156,7 @@ func NewHttpClient(base string) (httpClient *HttpClient) {
 	return
 }
 
-func (self *HttpClient) addHeaders(req *gohttp.Request) {
+func (self *HttpClient) addHeaders(req *http.Request) {
 
 	if len(self.UserAgent) > 0 {
 		req.Header.Set("User-Agent", self.UserAgent)
@@ -167,7 +167,7 @@ func (self *HttpClient) addHeaders(req *gohttp.Request) {
 	}
 }
 
-func (self *HttpClient) checkRedirect(req *gohttp.Request, via []*gohttp.Request) error {
+func (self *HttpClient) checkRedirect(req *http.Request, via []*http.Request) error {
     if len(via) >= 10 {
             return errors.New("stopped after 10 redirects")
     }
@@ -177,14 +177,14 @@ func (self *HttpClient) checkRedirect(req *gohttp.Request, via []*gohttp.Request
     return nil
 }
 
-func (self *HttpClient) Request(method string, urlpath string, body io.Reader) (req *gohttp.Request) {
+func (self *HttpClient) Request(method string, urlpath string, body io.Reader) (req *http.Request) {
         if u, err := self.BaseURL.Parse(urlpath); err != nil {
             log.Fatal(err)
         } else {
             urlpath = u.String()
         }
 
-	req, err := gohttp.NewRequest(method, urlpath, body)
+	req, err := http.NewRequest(method, urlpath, body)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -193,10 +193,10 @@ func (self *HttpClient) Request(method string, urlpath string, body io.Reader) (
 	return
 }
 
-func (self *HttpClient) Do(req *gohttp.Request) (*Response, error) {
+func (self *HttpClient) Do(req *http.Request) (*HttpResponse, error) {
 	resp, err := self.client.Do(req)
 	if err == nil {
-		return &Response{*resp}, nil
+		return &HttpResponse{*resp}, nil
 	} else {
 		return nil, err
 	}
@@ -205,12 +205,12 @@ func (self *HttpClient) Do(req *gohttp.Request) (*Response, error) {
 //
 // HttpClient.Get with params
 //
-func (self *HttpClient) Get(path string, params map[string]interface{}) (*Response, error) {
+func (self *HttpClient) Get(path string, params map[string]interface{}) (*HttpResponse, error) {
     req := self.Request("GET", URLWithParams(path, params).String(), nil)
     return self.Do(req)
 }
 
-func (self *HttpClient) Post(path string, contentType string, content io.Reader) (*Response, error) {
+func (self *HttpClient) Post(path string, contentType string, content io.Reader) (*HttpResponse, error) {
     req := self.Request("POST", path, content)
     if len(contentType) > 0 {
         req.Header.Set("Content-Type", contentType)
