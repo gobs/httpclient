@@ -1,6 +1,7 @@
 package http
 
 import (
+        "errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -143,7 +144,7 @@ type HttpClient struct {
 
 func NewHttpClient(base string) (httpClient *HttpClient) {
 	httpClient = new(HttpClient)
-	httpClient.client = &gohttp.Client{}
+	httpClient.client = &gohttp.Client{CheckRedirect: httpClient.checkRedirect}
         httpClient.Headers = make(map[string]string)
 
         if u, err := url.Parse(base); err != nil {
@@ -153,6 +154,27 @@ func NewHttpClient(base string) (httpClient *HttpClient) {
         }
 
 	return
+}
+
+func (self *HttpClient) addHeaders(req *gohttp.Request) {
+
+	if len(self.UserAgent) > 0 {
+		req.Header.Set("User-Agent", self.UserAgent)
+	}
+
+	for k, v := range self.Headers {
+		req.Header.Set(k, v)
+	}
+}
+
+func (self *HttpClient) checkRedirect(req *gohttp.Request, via []*gohttp.Request) error {
+    if len(via) >= 10 {
+            return errors.New("stopped after 10 redirects")
+    }
+
+    // TODO: check for same host before adding headers
+    self.addHeaders(req)
+    return nil
 }
 
 func (self *HttpClient) Request(method string, urlpath string, body io.Reader) (req *gohttp.Request) {
@@ -167,14 +189,7 @@ func (self *HttpClient) Request(method string, urlpath string, body io.Reader) (
 		log.Fatal(err)
 	}
 
-	if len(self.UserAgent) > 0 {
-		req.Header.Set("User-Agent", self.UserAgent)
-	}
-
-	for k, v := range self.Headers {
-		req.Header.Set(k, v)
-	}
-
+        self.addHeaders(req)
 	return
 }
 
