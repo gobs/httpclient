@@ -1,4 +1,4 @@
-http
-====
+httpclient
+==========
 
-http client stuff
+More flexible http client library for Go
