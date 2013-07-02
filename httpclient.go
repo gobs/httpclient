@@ -1,7 +1,7 @@
 package httpclient
 
 import (
-        "errors"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -9,8 +9,9 @@ import (
 	"net/url"
 	"reflect"
 
-	"net/http"
 	"github.com/gobs/jujus"
+	"github.com/gobs/pretty"
+	"net/http"
 )
 
 type HttpResponse struct {
@@ -137,21 +138,23 @@ func (resp *HttpResponse) Json() *jujus.Juju {
 type HttpClient struct {
 	client *http.Client
 
-        BaseURL   *url.URL
+	BaseURL   *url.URL
 	UserAgent string
 	Headers   map[string]string
+
+	Verbose bool
 }
 
 func NewHttpClient(base string) (httpClient *HttpClient) {
 	httpClient = new(HttpClient)
 	httpClient.client = &http.Client{CheckRedirect: httpClient.checkRedirect}
-        httpClient.Headers = make(map[string]string)
+	httpClient.Headers = make(map[string]string)
 
-        if u, err := url.Parse(base); err != nil {
-            log.Fatal(err)
-        } else {
-            httpClient.BaseURL = u
-        }
+	if u, err := url.Parse(base); err != nil {
+		log.Fatal(err)
+	} else {
+		httpClient.BaseURL = u
+	}
 
 	return
 }
@@ -168,36 +171,48 @@ func (self *HttpClient) addHeaders(req *http.Request) {
 }
 
 func (self *HttpClient) checkRedirect(req *http.Request, via []*http.Request) error {
-    if len(via) >= 10 {
-            return errors.New("stopped after 10 redirects")
-    }
+	if len(via) >= 10 {
+		return errors.New("stopped after 10 redirects")
+	}
 
-    // TODO: check for same host before adding headers
-    self.addHeaders(req)
-    return nil
+	// TODO: check for same host before adding headers
+	self.addHeaders(req)
+	return nil
 }
 
 func (self *HttpClient) Request(method string, urlpath string, body io.Reader) (req *http.Request) {
-        if u, err := self.BaseURL.Parse(urlpath); err != nil {
-            log.Fatal(err)
-        } else {
-            urlpath = u.String()
-        }
+	if u, err := self.BaseURL.Parse(urlpath); err != nil {
+		log.Fatal(err)
+	} else {
+		urlpath = u.String()
+	}
 
 	req, err := http.NewRequest(method, urlpath, body)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-        self.addHeaders(req)
+	self.addHeaders(req)
 	return
 }
 
 func (self *HttpClient) Do(req *http.Request) (*HttpResponse, error) {
+	if self.Verbose {
+		log.Println("REQUEST:", req.Method, req.URL, pretty.PrettyFormat(req.Header))
+	}
+
 	resp, err := self.client.Do(req)
 	if err == nil {
+		if self.Verbose {
+			log.Println("RESPONSE:", resp.Status, pretty.PrettyFormat(resp.Header))
+		}
+
 		return &HttpResponse{*resp}, nil
 	} else {
+		if self.Verbose {
+			log.Println("ERROR:", err)
+		}
+
 		return nil, err
 	}
 }
@@ -206,14 +221,14 @@ func (self *HttpClient) Do(req *http.Request) (*HttpResponse, error) {
 // HttpClient.Get with params
 //
 func (self *HttpClient) Get(path string, params map[string]interface{}) (*HttpResponse, error) {
-    req := self.Request("GET", URLWithParams(path, params).String(), nil)
-    return self.Do(req)
+	req := self.Request("GET", URLWithParams(path, params).String(), nil)
+	return self.Do(req)
 }
 
 func (self *HttpClient) Post(path string, contentType string, content io.Reader) (*HttpResponse, error) {
-    req := self.Request("POST", path, content)
-    if len(contentType) > 0 {
-        req.Header.Set("Content-Type", contentType)
-    }
-    return self.Do(req)
+	req := self.Request("POST", path, content)
+	if len(contentType) > 0 {
+		req.Header.Set("Content-Type", contentType)
+	}
+	return self.Do(req)
 }

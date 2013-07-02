@@ -1,13 +1,13 @@
 package httpclient
 
 import (
-        "bytes"
+	"bytes"
 	"io/ioutil"
 	"testing"
 )
 
 const (
-        BASE_URL = "http://httpbin.org/"
+	BASE_URL = "http://httpbin.org/"
 	GET_URL  = BASE_URL + "get"
 	POST_URL = BASE_URL + "post"
 )
@@ -29,7 +29,7 @@ func TestURLWithParams(test *testing.T) {
 
 func TestURLWithPathParams(test *testing.T) {
 	test.Log(URLWithPathParams(GET_URL, "another", nil))
-	test.Log(URLWithPathParams(GET_URL + "/", "another", nil))
+	test.Log(URLWithPathParams(GET_URL+"/", "another", nil))
 }
 
 func TestGet(test *testing.T) {
@@ -76,14 +76,15 @@ func TestGetJSON(test *testing.T) {
 }
 
 func TestClient(test *testing.T) {
-    client := NewHttpClient(BASE_URL)
-    client.UserAgent = "TestClient 0.1"
+	client := NewHttpClient(BASE_URL)
+	client.UserAgent = "TestClient 0.1"
+	client.Verbose = true
 
-    req := client.Request("GET", "get", nil)
-    resp, err := client.Do(req)
-    test.Log(err, string(resp.Content()))
-    
-    req = client.Request("POST", "post", bytes.NewBuffer([]byte("the body")))
-    resp, err = client.Do(req)
-    test.Log(err, string(resp.Content()))
+	req := client.Request("GET", "get", nil)
+	resp, err := client.Do(req)
+	test.Log(err, string(resp.Content()))
+
+	req = client.Request("POST", "post", bytes.NewBuffer([]byte("the body")))
+	resp, err = client.Do(req)
+	test.Log(err, string(resp.Content()))
 }
