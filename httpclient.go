@@ -171,6 +171,10 @@ func (self *HttpClient) addHeaders(req *http.Request) {
 }
 
 func (self *HttpClient) checkRedirect(req *http.Request, via []*http.Request) error {
+	if self.Verbose {
+		log.Println("REDIRECT:", len(via), req.URL)
+	}
+
 	if len(via) >= 10 {
 		return errors.New("stopped after 10 redirects")
 	}
