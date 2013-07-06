@@ -221,9 +221,11 @@ func (self *HttpClient) Do(req *http.Request) (*HttpResponse, error) {
 	}
 }
 
-//
-// HttpClient.Get with params
-//
+func (self *HttpClient) Head(path string, params map[string]interface{}) (*HttpResponse, error) {
+	req := self.Request("HEAD", URLWithParams(path, params).String(), nil)
+	return self.Do(req)
+}
+
 func (self *HttpClient) Get(path string, params map[string]interface{}) (*HttpResponse, error) {
 	req := self.Request("GET", URLWithParams(path, params).String(), nil)
 	return self.Do(req)
