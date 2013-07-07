@@ -88,3 +88,21 @@ func TestClient(test *testing.T) {
 	resp, err = client.Do(req)
 	test.Log(err, string(resp.Content()))
 }
+
+func TestClientGet(test *testing.T) {
+	client := NewHttpClient(BASE_URL)
+	client.UserAgent = "TestClient 0.1"
+	client.Verbose = true
+
+	resp, err := client.Get("get", nil)
+	test.Log(err, string(resp.Content()))
+}
+
+func TestClientPost(test *testing.T) {
+	client := NewHttpClient(BASE_URL)
+	client.UserAgent = "TestClient 0.1"
+	client.Verbose = true
+
+	resp, err := client.Post("post", map[string]string{"Content-Type": "text/plain", "Content-Disposition": "attachment;filename=test.txt"}, bytes.NewBuffer([]byte("the body")))
+	test.Log(err, string(resp.Content()))
+}

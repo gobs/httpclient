@@ -231,10 +231,12 @@ func (self *HttpClient) Get(path string, params map[string]interface{}) (*HttpRe
 	return self.Do(req)
 }
 
-func (self *HttpClient) Post(path string, contentType string, content io.Reader) (*HttpResponse, error) {
+func (self *HttpClient) Post(path string, headers map[string]string, content io.Reader) (*HttpResponse, error) {
 	req := self.Request("POST", path, content)
-	if len(contentType) > 0 {
-		req.Header.Set("Content-Type", contentType)
+	if headers != nil {
+		for k, v := range headers {
+			req.Header.Set(k, v)
+		}
 	}
 	return self.Do(req)
 }
