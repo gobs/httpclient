@@ -159,13 +159,17 @@ func NewHttpClient(base string) (httpClient *HttpClient) {
 	return
 }
 
-func (self *HttpClient) addHeaders(req *http.Request) {
+func (self *HttpClient) addHeaders(req *http.Request, headers map[string]string) {
 
 	if len(self.UserAgent) > 0 {
 		req.Header.Set("User-Agent", self.UserAgent)
 	}
 
 	for k, v := range self.Headers {
+		req.Header.Set(k, v)
+	}
+
+	for k, v := range headers {
 		req.Header.Set(k, v)
 	}
 }
@@ -180,11 +184,11 @@ func (self *HttpClient) checkRedirect(req *http.Request, via []*http.Request) er
 	}
 
 	// TODO: check for same host before adding headers
-	self.addHeaders(req)
+	self.addHeaders(req, nil)
 	return nil
 }
 
-func (self *HttpClient) Request(method string, urlpath string, body io.Reader) (req *http.Request) {
+func (self *HttpClient) Request(method string, urlpath string, body io.Reader, headers map[string]string) (req *http.Request) {
 	if u, err := self.BaseURL.Parse(urlpath); err != nil {
 		log.Fatal(err)
 	} else {
@@ -196,7 +200,7 @@ func (self *HttpClient) Request(method string, urlpath string, body io.Reader) (
 		log.Fatal(err)
 	}
 
-	self.addHeaders(req)
+	self.addHeaders(req, headers)
 	return
 }
 
@@ -221,18 +225,23 @@ func (self *HttpClient) Do(req *http.Request) (*HttpResponse, error) {
 	}
 }
 
-func (self *HttpClient) Head(path string, params map[string]interface{}) (*HttpResponse, error) {
-	req := self.Request("HEAD", URLWithParams(path, params).String(), nil)
+func (self *HttpClient) DELETE(path string, headers map[string]string) (*HttpResponse, error) {
+	req := self.Request("DELETE", path, nil, headers)
 	return self.Do(req)
 }
 
-func (self *HttpClient) Get(path string, params map[string]interface{}) (*HttpResponse, error) {
-	req := self.Request("GET", URLWithParams(path, params).String(), nil)
+func (self *HttpClient) Head(path string, params map[string]interface{}, headers map[string]string) (*HttpResponse, error) {
+	req := self.Request("HEAD", URLWithParams(path, params).String(), nil, headers)
 	return self.Do(req)
 }
 
-func (self *HttpClient) Post(path string, headers map[string]string, content io.Reader) (*HttpResponse, error) {
-	req := self.Request("POST", path, content)
+func (self *HttpClient) Get(path string, params map[string]interface{}, headers map[string]string) (*HttpResponse, error) {
+	req := self.Request("GET", URLWithParams(path, params).String(), nil, headers)
+	return self.Do(req)
+}
+
+func (self *HttpClient) Post(path string, content io.Reader, headers map[string]string) (*HttpResponse, error) {
+	req := self.Request("POST", path, content, headers)
 	if headers != nil {
 		for k, v := range headers {
 			req.Header.Set(k, v)
