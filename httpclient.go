@@ -225,7 +225,7 @@ func (self *HttpClient) Do(req *http.Request) (*HttpResponse, error) {
 	}
 }
 
-func (self *HttpClient) DELETE(path string, headers map[string]string) (*HttpResponse, error) {
+func (self *HttpClient) Delete(path string, headers map[string]string) (*HttpResponse, error) {
 	req := self.Request("DELETE", path, nil, headers)
 	return self.Do(req)
 }
