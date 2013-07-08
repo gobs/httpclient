@@ -131,20 +131,30 @@ func (resp *HttpResponse) Json() *jujus.Juju {
 }
 
 ////////////////////////////////////////////////////////////////////////
+
 //
 // http.Client with some defaults and stuff
 //
-
 type HttpClient struct {
+	// the http.Client
 	client *http.Client
 
+	// the base URL for this client
 	BaseURL   *url.URL
+	
+	// the client UserAgent string
 	UserAgent string
+	
+	// Common headers to be passed on each request
 	Headers   map[string]string
 
+	// if Verbose, log request and response info
 	Verbose bool
 }
 
+//
+// Create a new HttpClient
+//
 func NewHttpClient(base string) (httpClient *HttpClient) {
 	httpClient = new(HttpClient)
 	httpClient.client = &http.Client{CheckRedirect: httpClient.checkRedirect}
@@ -159,6 +169,9 @@ func NewHttpClient(base string) (httpClient *HttpClient) {
 	return
 }
 
+//
+// add default headers plus extra headers
+//
 func (self *HttpClient) addHeaders(req *http.Request, headers map[string]string) {
 
 	if len(self.UserAgent) > 0 {
@@ -174,6 +187,9 @@ func (self *HttpClient) addHeaders(req *http.Request, headers map[string]string)
 	}
 }
 
+//
+// the callback for CheckRedirect, used to pass along the headers in case of redirection
+//
 func (self *HttpClient) checkRedirect(req *http.Request, via []*http.Request) error {
 	if self.Verbose {
 		log.Println("REDIRECT:", len(via), req.URL)
@@ -188,6 +204,9 @@ func (self *HttpClient) checkRedirect(req *http.Request, via []*http.Request) er
 	return nil
 }
 
+//
+// Create a request object given the method, path, body and extra headers
+//
 func (self *HttpClient) Request(method string, urlpath string, body io.Reader, headers map[string]string) (req *http.Request) {
 	if u, err := self.BaseURL.Parse(urlpath); err != nil {
 		log.Fatal(err)
@@ -204,6 +223,9 @@ func (self *HttpClient) Request(method string, urlpath string, body io.Reader, h
 	return
 }
 
+//
+// Execute request
+//
 func (self *HttpClient) Do(req *http.Request) (*HttpResponse, error) {
 	if self.Verbose {
 		log.Println("REQUEST:", req.Method, req.URL, pretty.PrettyFormat(req.Header))
@@ -225,21 +247,33 @@ func (self *HttpClient) Do(req *http.Request) (*HttpResponse, error) {
 	}
 }
 
+//
+// Execute a DELETE request
+//
 func (self *HttpClient) Delete(path string, headers map[string]string) (*HttpResponse, error) {
 	req := self.Request("DELETE", path, nil, headers)
 	return self.Do(req)
 }
 
+//
+// Execute a HEAD request
+//
 func (self *HttpClient) Head(path string, params map[string]interface{}, headers map[string]string) (*HttpResponse, error) {
 	req := self.Request("HEAD", URLWithParams(path, params).String(), nil, headers)
 	return self.Do(req)
 }
 
+//
+// Execute a GET request
+//
 func (self *HttpClient) Get(path string, params map[string]interface{}, headers map[string]string) (*HttpResponse, error) {
 	req := self.Request("GET", URLWithParams(path, params).String(), nil, headers)
 	return self.Do(req)
 }
 
+//
+// Execute a POST request
+//
 func (self *HttpClient) Post(path string, content io.Reader, headers map[string]string) (*HttpResponse, error) {
 	req := self.Request("POST", path, content, headers)
 	if headers != nil {
