@@ -6,12 +6,12 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"net/http"
 	"net/url"
 	"reflect"
 
-	"github.com/gobs/jujus"
 	"github.com/gobs/pretty"
-	"net/http"
+	"github.com/gobs/simplejson"
 )
 
 type HttpResponse struct {
@@ -126,8 +126,9 @@ func (resp *HttpResponse) Content() []byte {
 //
 //  Try to parse the response body as JSON
 //
-func (resp *HttpResponse) Json() *jujus.Juju {
-	return jujus.Loads(resp.Content())
+func (resp *HttpResponse) Json() (json *simplejson.Json) {
+	json, _ = simplejson.LoadBytes(resp.Content())
+	return
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -140,13 +141,13 @@ type HttpClient struct {
 	client *http.Client
 
 	// the base URL for this client
-	BaseURL   *url.URL
-	
+	BaseURL *url.URL
+
 	// the client UserAgent string
 	UserAgent string
-	
+
 	// Common headers to be passed on each request
-	Headers   map[string]string
+	Headers map[string]string
 
 	// if Verbose, log request and response info
 	Verbose bool
