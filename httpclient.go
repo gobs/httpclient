@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"reflect"
+        "strings"
 
 	"github.com/gobs/pretty"
 	"github.com/gobs/simplejson"
@@ -16,6 +17,15 @@ import (
 
 type HttpResponse struct {
 	http.Response
+}
+
+func (r *HttpResponse) ContentType() string {
+    content_type := r.Header.Get("Content-Type")
+    if len(content_type) == 0 {
+        return content_type
+    }
+
+    return strings.TrimSpace(strings.Split(content_type, ";")[0])
 }
 
 //
