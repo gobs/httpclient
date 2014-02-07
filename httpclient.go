@@ -1,6 +1,7 @@
 package httpclient
 
 import (
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
@@ -14,6 +15,26 @@ import (
 	"github.com/gobs/pretty"
 	"github.com/gobs/simplejson"
 )
+
+var (
+	DefaultClient = &http.Client{} // we use our own default client, so we can change the TLS configuration
+)
+
+//
+// Allow connections via HTTPS even if something is wrong with the certificate
+// (self-signed or expired)
+//
+func AllowInsecure(insecure bool) {
+	if insecure {
+		tr := &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		}
+
+		DefaultClient.Transport = tr
+	} else {
+		DefaultClient.Transport = nil
+	}
+}
 
 type HttpResponse struct {
 	http.Response
@@ -104,7 +125,7 @@ func URLWithParams(base string, params map[string]interface{}) (u *url.URL) {
 // http.Get with params
 //
 func Get(urlStr string, params map[string]interface{}) (*HttpResponse, error) {
-	resp, err := http.Get(URLWithParams(urlStr, params).String())
+	resp, err := DefaultClient.Get(URLWithParams(urlStr, params).String())
 	if err == nil {
 		return &HttpResponse{*resp}, nil
 	} else {
@@ -116,7 +137,7 @@ func Get(urlStr string, params map[string]interface{}) (*HttpResponse, error) {
 // http.Post with params
 //
 func Post(urlStr string, params map[string]interface{}) (*HttpResponse, error) {
-	resp, err := http.PostForm(urlStr, URLWithParams(urlStr, params).Query())
+	resp, err := DefaultClient.PostForm(urlStr, URLWithParams(urlStr, params).Query())
 	if err == nil {
 		return &HttpResponse{*resp}, nil
 	} else {
@@ -178,6 +199,22 @@ func NewHttpClient(base string) (httpClient *HttpClient) {
 	}
 
 	return
+}
+
+//
+// Allow connections via HTTPS even if something is wrong with the certificate
+// (self-signed or expired)
+//
+func (self *HttpClient) AllowInsecure(insecure bool) {
+	if insecure {
+		tr := &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		}
+
+		self.client.Transport = tr
+	} else {
+		self.client.Transport = nil
+	}
 }
 
 //
