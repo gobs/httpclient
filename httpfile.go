@@ -32,7 +32,9 @@ func OpenHttpFile(url string, headers map[string]string) (*HttpFile, error) {
 	f := HttpFile{Url: url, Headers: headers, client: &http.Client{}, pos: 0, len: -1}
 
 	resp, err := f.do("HEAD", nil)
-	defer resp.Body.Close()
+	if resp != nil {
+		defer resp.Body.Close()
+	}
 
 	if err != nil {
 		return nil, &HttpFileError{Err: err}
@@ -67,8 +69,13 @@ func (f *HttpFile) do(method string, headers map[string]string) (*http.Response,
 	return f.client.Do(req)
 }
 
-// The Reader interface
-func (f *HttpFile) Read(p []byte) (int, error) {
+// Returns the file size
+func (f *HttpFile) Size() int64 {
+	return f.len
+}
+
+// The ReaderAt interface
+func (f *HttpFile) ReadAt(p []byte, off int64) (int, error) {
 	if f.client == nil {
 		return 0, os.ErrInvalid
 	}
@@ -78,7 +85,7 @@ func (f *HttpFile) Read(p []byte) (int, error) {
 		return plen, nil
 	}
 
-	bytes_range := fmt.Sprintf("bytes=%d-%d", f.pos, f.pos+int64(plen-1))
+	bytes_range := fmt.Sprintf("bytes=%d-%d", off, off+int64(plen-1))
 	resp, err := f.do("GET", headers{"Range": bytes_range})
 	defer resp.Body.Close()
 
@@ -108,8 +115,18 @@ func (f *HttpFile) Read(p []byte) (int, error) {
 		return 0, err
 	}
 
-	f.pos += int64(r)
 	return r, nil
+}
+
+// The Reader interface
+func (f *HttpFile) Read(p []byte) (int, error) {
+
+	n, err := f.ReadAt(p, f.pos)
+	if n > 0 {
+		f.pos += int64(n)
+	}
+
+	return n, err
 }
 
 // The Closer interface
