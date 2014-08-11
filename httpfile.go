@@ -2,7 +2,7 @@ package httpclient
 
 import (
 	"fmt"
-	//"io"
+	"io"
 	"net/http"
 	"os"
 )
@@ -85,6 +85,9 @@ func (f *HttpFile) Read(p []byte) (int, error) {
 	if err != nil {
 		return 0, &HttpFileError{Err: err}
 	}
+	if resp.StatusCode == http.StatusRequestedRangeNotSatisfiable {
+		return 0, io.EOF
+	}
 	if resp.StatusCode != http.StatusPartialContent {
 		return 0, &HttpFileError{Err: fmt.Errorf("Unexpected Status %s", resp.Status)}
 	}
@@ -92,9 +95,12 @@ func (f *HttpFile) Read(p []byte) (int, error) {
 	content_range := resp.Header.Get("Content-Range")
 
 	var first, last, total int64
-	n, err := fmt.Sscanf(content_range, "bytes %d-%d/%d", first, last, total)
-	if err != nil || n != 3 {
-		return 0, &HttpFileError{Err: fmt.Errorf("Unexpected Content-Range %d", content_range)}
+	n, err := fmt.Sscanf(content_range, "bytes %d-%d/%d", &first, &last, &total)
+	if err != nil {
+		return 0, err
+	}
+	if n != 3 {
+		return 0, &HttpFileError{Err: fmt.Errorf("Unexpected Content-Range %q (%d)", content_range, n)}
 	}
 
 	r, err := resp.Body.Read(p)
@@ -124,10 +130,10 @@ func (f *HttpFile) Seek(offset int64, whence int) (int64, error) {
 			newpos = offset
 
 		case 1: // from current
-			newpos = f.pos + int64(offset)
+			newpos = f.pos + offset
 
 		case 2: // from end
-			newpos = f.len + int64(offset)
+			newpos = f.len + offset
 		}
 	}
 
