@@ -110,12 +110,13 @@ func (f *HttpFile) ReadAt(p []byte, off int64) (int, error) {
 		return 0, &HttpFileError{Err: fmt.Errorf("Unexpected Content-Range %q (%d)", content_range, n)}
 	}
 
-	r, err := resp.Body.Read(p)
-	if err != nil {
-		return 0, err
+	n, err = resp.Body.Read(p)
+	if n > 0 && err == io.EOF {
+		// read reached EOF, but archive/zip doesn't like this!
+		err = nil
 	}
 
-	return r, nil
+	return n, err
 }
 
 // The Reader interface
