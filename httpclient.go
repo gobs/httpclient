@@ -232,13 +232,13 @@ func (self *HttpClient) addHeaders(req *http.Request, headers map[string]string)
 	}
 
 	for k, v := range headers {
-		req.Header.Set(k, v)
-
 		if strings.ToLower(k) == "content-length" {
-			if len, err := strconv.Atoi(v); err == nil {
+			if len, err := strconv.Atoi(v); err == nil && req.ContentLength <= 0 {
 				req.ContentLength = int64(len)
 			}
-		}
+		} else {
+		        req.Header.Set(k, v)
+                }
 	}
 
 }

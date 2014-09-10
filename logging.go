@@ -2,6 +2,8 @@ package httpclient
 
 import (
 	"fmt"
+        "io"
+        "os"
 	"net/http"
 	"net/http/httputil"
 	"strconv"
@@ -43,4 +45,50 @@ func StartLogging(requestBody, responseBody bool) {
 // Disable logging requests/responses
 func StopLogging() {
 	http.DefaultTransport = &http.Transport{}
+}
+
+// A Reader that "logs" progress
+
+type ProgressReader struct {
+    r   io.Reader
+    c   [1]byte
+    threshold int
+    curr int
+}
+
+func NewProgressReader(r io.Reader, c byte, threshold int) *ProgressReader {
+    if c == 0 {
+        c = '.'
+    }
+    if threshold <= 0 {
+        threshold = 10240
+    }
+    p := &ProgressReader{r: r, c: [1]byte{ c }, threshold: threshold, curr: 0}
+    return p
+}
+
+func (p *ProgressReader) Read(b []byte) (int, error) {
+    n, err := p.r.Read(b)
+
+    p.curr += n
+
+    if err == io.EOF {
+        os.Stdout.Write([]byte{'\n'})
+        os.Stdout.Sync()
+    } else if p.curr >= p.threshold {
+        p.curr -= p.threshold
+
+        os.Stdout.Write(p.c[:])
+        os.Stdout.Sync()
+    }
+
+    return n, err
+}
+
+func (p *ProgressReader) Close() error {
+    if rc, ok := p.r.(io.ReadCloser); ok {
+        return rc.Close()
+    } else {
+        return nil
+    }
 }
