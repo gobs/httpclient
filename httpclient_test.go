@@ -3,6 +3,7 @@ package httpclient
 import (
 	"bytes"
 	"io/ioutil"
+	"strconv"
 	"testing"
 )
 
@@ -103,6 +104,8 @@ func TestClientPost(test *testing.T) {
 	client.UserAgent = "TestClient 0.1"
 	client.Verbose = true
 
-	resp, err := client.Post("post", bytes.NewBuffer([]byte("the body")), map[string]string{"Content-Type": "text/plain", "Content-Disposition": "attachment;filename=test.txt"})
+	data := bytes.NewBuffer([]byte("the body"))
+
+	resp, err := client.Post("post", data, map[string]string{"Content-Type": "text/plain", "Content-Disposition": "attachment;filename=test.txt", "Content-Length": strconv.Itoa(data.Len())})
 	test.Log(err, string(resp.Content()))
 }

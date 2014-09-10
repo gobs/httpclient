@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"reflect"
+	"strconv"
 	"strings"
 
 	"github.com/gobs/pretty"
@@ -232,7 +233,14 @@ func (self *HttpClient) addHeaders(req *http.Request, headers map[string]string)
 
 	for k, v := range headers {
 		req.Header.Set(k, v)
+
+		if strings.ToLower(k) == "content-length" {
+			if len, err := strconv.Atoi(v); err == nil {
+				req.ContentLength = int64(len)
+			}
+		}
 	}
+
 }
 
 //
@@ -324,10 +332,5 @@ func (self *HttpClient) Get(path string, params map[string]interface{}, headers 
 //
 func (self *HttpClient) Post(path string, content io.Reader, headers map[string]string) (*HttpResponse, error) {
 	req := self.Request("POST", path, content, headers)
-	if headers != nil {
-		for k, v := range headers {
-			req.Header.Set(k, v)
-		}
-	}
 	return self.Do(req)
 }
