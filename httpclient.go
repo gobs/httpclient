@@ -311,7 +311,7 @@ func (self *HttpClient) Do(req *http.Request) (*HttpResponse, error) {
 		return &HttpResponse{*resp}, nil
 	} else {
 		if self.Verbose {
-			log.Println("ERROR:", err)
+			log.Println("ERROR:", err, "REQUEST:", req.Method, req.URL, pretty.PrettyFormat(req.Header))
 		}
 
 		return nil, err

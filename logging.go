@@ -24,7 +24,11 @@ func (lt *LoggingTransport) RoundTrip(req *http.Request) (resp *http.Response, e
 
 	resp, err = lt.t.RoundTrip(req)
 	if err != nil {
-		fmt.Println("ERROR:", err)
+                if lt.requestBody {
+                    // don't print the body twice
+	            dreq, _ = httputil.DumpRequest(req, false)
+                }
+		fmt.Println("ERROR:", err, "REQUEST:", strconv.Quote(string(dreq)))
 	} else {
 		dresp, _ := httputil.DumpResponse(resp, lt.responseBody)
 		fmt.Println("RESPONSE:", string(dresp))
