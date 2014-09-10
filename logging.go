@@ -34,6 +34,10 @@ func (lt *LoggingTransport) RoundTrip(req *http.Request) (resp *http.Response, e
 	return
 }
 
+func (lt *LoggingTransport) CancelRequest(req *http.Request) {
+        lt.t.CancelRequest(req)
+}
+
 // Enable logging requests/response headers
 //
 // if requestBody == true, also log request body

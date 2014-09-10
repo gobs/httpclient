@@ -12,6 +12,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+        "time"
 
 	"github.com/gobs/pretty"
 	"github.com/gobs/simplejson"
@@ -35,6 +36,13 @@ func AllowInsecure(insecure bool) {
 	} else {
 		DefaultClient.Transport = nil
 	}
+}
+
+//
+// Set connection timeout
+//
+func SetTimeout(t time.Duration) {
+    DefaultClient.Timeout = t
 }
 
 type HttpResponse struct {
@@ -216,6 +224,13 @@ func (self *HttpClient) AllowInsecure(insecure bool) {
 	} else {
 		self.client.Transport = nil
 	}
+}
+
+//
+// Set connection timeout
+//
+func (self *HttpClient) SetTimeout(t time.Duration) {
+    self.client.Timeout = t
 }
 
 //
