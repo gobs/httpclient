@@ -349,3 +349,11 @@ func (self *HttpClient) Post(path string, content io.Reader, headers map[string]
 	req := self.Request("POST", path, content, headers)
 	return self.Do(req)
 }
+
+//
+// Execute a PUT request
+//
+func (self *HttpClient) Put(path string, content io.Reader, headers map[string]string) (*HttpResponse, error) {
+	req := self.Request("PUT", path, content, headers)
+	return self.Do(req)
+}
