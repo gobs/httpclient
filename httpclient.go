@@ -20,6 +20,9 @@ import (
 
 var (
 	DefaultClient = &http.Client{} // we use our own default client, so we can change the TLS configuration
+
+	NoRedirect       = errors.New("No redirect")
+	TooManyRedirects = errors.New("stopped after 10 redirects")
 )
 
 //
@@ -262,12 +265,17 @@ func (self *HttpClient) addHeaders(req *http.Request, headers map[string]string)
 // the callback for CheckRedirect, used to pass along the headers in case of redirection
 //
 func (self *HttpClient) checkRedirect(req *http.Request, via []*http.Request) error {
+	if req.Method == "HEAD" {
+		// don't follow redirects on a HEAD request
+		return NoRedirect
+	}
+
 	if self.Verbose {
 		log.Println("REDIRECT:", len(via), req.URL)
 	}
 
 	if len(via) >= 10 {
-		return errors.New("stopped after 10 redirects")
+		return TooManyRedirects
 	}
 
 	// TODO: check for same host before adding headers
