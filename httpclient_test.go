@@ -8,9 +8,10 @@ import (
 )
 
 const (
-	BASE_URL = "http://httpbin.org/"
-	GET_URL  = BASE_URL + "get"
-	POST_URL = BASE_URL + "post"
+	BASE_URL     = "http://httpbin.org/"
+	GET_URL      = BASE_URL + "get"
+	POST_URL     = BASE_URL + "post"
+	REDIRECT_URL = BASE_URL + "redirect-to?url=http://example.com"
 )
 
 var (
@@ -108,4 +109,26 @@ func TestClientPost(test *testing.T) {
 
 	resp, err := client.Post("post", data, map[string]string{"Content-Type": "text/plain", "Content-Disposition": "attachment;filename=test.txt", "Content-Length": strconv.Itoa(data.Len())})
 	test.Log(err, string(resp.Content()))
+}
+
+func TestClientGetRedirect(test *testing.T) {
+	client := NewHttpClient(REDIRECT_URL)
+	client.UserAgent = "TestClient 0.1"
+	client.Verbose = true
+
+	resp, err := client.Get("", nil, nil)
+	test.Log(err, string(resp.Content()))
+}
+
+func TestClientHeadRedirect(test *testing.T) {
+	client := NewHttpClient(REDIRECT_URL)
+	client.UserAgent = "TestClient 0.1"
+	client.Verbose = true
+
+	resp, err := client.Head("", nil, nil)
+	location := "<no-location>"
+	if resp != nil {
+		location = resp.Header.Get("Location")
+	}
+	test.Log(err, location)
 }

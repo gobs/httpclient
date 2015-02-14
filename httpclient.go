@@ -311,7 +311,10 @@ func (self *HttpClient) Do(req *http.Request) (*HttpResponse, error) {
 	}
 
 	resp, err := self.client.Do(req)
-	if err == nil || err == NoRedirect {
+	if urlerr, ok := err.(*url.Error); ok && urlerr.Err == NoRedirect {
+		err = nil // redirect on HEAD is not an error
+	}
+	if err == nil {
 		if self.Verbose {
 			log.Println("RESPONSE:", resp.Status, pretty.PrettyFormat(resp.Header))
 		}
