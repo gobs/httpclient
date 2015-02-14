@@ -311,7 +311,7 @@ func (self *HttpClient) Do(req *http.Request) (*HttpResponse, error) {
 	}
 
 	resp, err := self.client.Do(req)
-	if err == nil {
+	if err == nil || err == NoRedirect {
 		if self.Verbose {
 			log.Println("RESPONSE:", resp.Status, pretty.PrettyFormat(resp.Header))
 		}
