@@ -62,6 +62,19 @@ func (r *HttpResponse) ContentType() string {
 }
 
 //
+// Close makes sure that all data from the body is read
+// before closing the reader.
+//
+// If that is not the desider behaviour, just call HttpResponse.Body.Close()
+//
+func (r *HttpResponse) Close() {
+	if r != nil && r.Body != nil {
+		io.Copy(ioutil.Discard, r.Body)
+		r.Body.Close()
+	}
+}
+
+//
 // Check if the input value is a "primitive" that can be safely stringified
 //
 func canStringify(v reflect.Value) bool {
