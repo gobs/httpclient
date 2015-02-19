@@ -48,6 +48,25 @@ func SetTimeout(t time.Duration) {
 	DefaultClient.Timeout = t
 }
 
+//
+// HTTP error
+//
+type HttpError struct {
+	Code    int
+	Message string
+}
+
+func (e HttpError) Error() string {
+	return e.Message
+}
+
+func (e HttpError) String() string {
+	return fmt.Sprintf("ERROR: %v %v", e.Code, e.Message)
+}
+
+//
+// A wrapper for http.Response
+//
 type HttpResponse struct {
 	http.Response
 }
@@ -72,6 +91,19 @@ func (r *HttpResponse) Close() {
 		io.Copy(ioutil.Discard, r.Body)
 		r.Body.Close()
 	}
+}
+
+//
+// ResponseError checks the StatusCode and return an error if needed.
+// The error is of type HttpError
+//
+func (r *HttpResponse) ResponseError() error {
+	class := r.StatusCode / 100
+	if class != 2 && class != 3 {
+		return HttpError{Code: r.StatusCode, Message: "HTTP " + r.Status}
+	}
+
+	return nil
 }
 
 //
