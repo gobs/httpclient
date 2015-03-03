@@ -65,6 +65,16 @@ func (e HttpError) String() string {
 }
 
 //
+// CloseResponse makes sure we close the response body
+//
+func CloseResponse(r *http.Response) {
+	if r != nil && r.Body != nil {
+		io.Copy(ioutil.Discard, r.Body)
+		r.Body.Close()
+	}
+}
+
+//
 // A wrapper for http.Response
 //
 type HttpResponse struct {
@@ -87,10 +97,7 @@ func (r *HttpResponse) ContentType() string {
 // If that is not the desider behaviour, just call HttpResponse.Body.Close()
 //
 func (r *HttpResponse) Close() {
-	if r != nil && r.Body != nil {
-		io.Copy(ioutil.Discard, r.Body)
-		r.Body.Close()
-	}
+	CloseResponse(&r.Response)
 }
 
 //
@@ -186,6 +193,7 @@ func Get(urlStr string, params map[string]interface{}) (*HttpResponse, error) {
 	if err == nil {
 		return &HttpResponse{*resp}, nil
 	} else {
+		CloseResponse(resp)
 		return nil, err
 	}
 }
@@ -198,6 +206,7 @@ func Post(urlStr string, params map[string]interface{}) (*HttpResponse, error) {
 	if err == nil {
 		return &HttpResponse{*resp}, nil
 	} else {
+		CloseResponse(resp)
 		return nil, err
 	}
 }
@@ -370,6 +379,7 @@ func (self *HttpClient) Do(req *http.Request) (*HttpResponse, error) {
 			log.Println("ERROR:", err, "REQUEST:", req.Method, req.URL, pretty.PrettyFormat(req.Header))
 		}
 
+		CloseResponse(resp)
 		return nil, err
 	}
 }
