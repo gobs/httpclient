@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"net"
 	"net/http"
 	"net/url"
 	"reflect"
@@ -279,6 +280,31 @@ func (self *HttpClient) AllowInsecure(insecure bool) {
 //
 func (self *HttpClient) SetTimeout(t time.Duration) {
 	self.client.Timeout = t
+}
+
+//
+// Set LocalAddr in Dialer
+//
+func (self *HttpClient) SetLocalAddr(addr string) {
+	transport, ok := self.client.Transport.(*http.Transport)
+	if transport == nil {
+		if transport, ok = http.DefaultTransport.(*http.Transport); !ok {
+			log.Println("SetLocalAddr for http.DefaultTransport != http.Transport")
+			return
+		}
+	} else if !ok {
+		log.Println("SetLocalAddr for client.Transport != http.Transport")
+		return
+	}
+	if tcpaddr, err := net.ResolveTCPAddr("tcp", addr); err == nil {
+		transport.Dial = (&net.Dialer{
+			Timeout:   30 * time.Second, // defaults from net/http DefaultTransport
+			KeepAlive: 30 * time.Second, // defaults from net/http DefaultTransport
+			LocalAddr: tcpaddr,
+		}).Dial
+	} else {
+		log.Println("Failed to resolve", addr, " to a TCP address")
+	}
 }
 
 //
