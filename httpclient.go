@@ -98,7 +98,9 @@ func (r *HttpResponse) ContentType() string {
 // If that is not the desider behaviour, just call HttpResponse.Body.Close()
 //
 func (r *HttpResponse) Close() {
-	CloseResponse(&r.Response)
+        if r != nil {
+	    CloseResponse(&r.Response)
+        }
 }
 
 //
