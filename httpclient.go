@@ -251,6 +251,10 @@ type HttpClient struct {
 
 	// if Verbose, log request and response info
 	Verbose bool
+
+	// if Close, all requests will set Connection: close
+	// (no keep-alive)
+	Close bool
 }
 
 //
@@ -393,6 +397,8 @@ func (self *HttpClient) Request(method string, urlpath string, body io.Reader, h
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	req.Close = self.Close
 
 	self.addHeaders(req, headers)
 	return
