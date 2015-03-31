@@ -98,9 +98,9 @@ func (r *HttpResponse) ContentType() string {
 // If that is not the desider behaviour, just call HttpResponse.Body.Close()
 //
 func (r *HttpResponse) Close() {
-        if r != nil {
-	    CloseResponse(&r.Response)
-        }
+	if r != nil {
+		CloseResponse(&r.Response)
+	}
 }
 
 //
@@ -268,6 +268,20 @@ func NewHttpClient(base string) (httpClient *HttpClient) {
 	}
 
 	return
+}
+
+//
+// Set Transport
+//
+func (self *HttpClient) SetTransport(tr http.RoundTripper) {
+	self.client.Transport = tr
+}
+
+//
+// Get current Transport
+//
+func (self *HttpClient) GetTransport() http.RoundTripper {
+	return self.client.Transport
 }
 
 //
