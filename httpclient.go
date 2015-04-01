@@ -253,6 +253,10 @@ type HttpClient struct {
 
 	// if Verbose, log request and response info
 	Verbose bool
+
+	// if Close, all requests will set Connection: close
+	// (no keep-alive)
+	Close bool
 }
 
 //
@@ -270,6 +274,20 @@ func NewHttpClient(base string) (httpClient *HttpClient) {
 	}
 
 	return
+}
+
+//
+// Set Transport
+//
+func (self *HttpClient) SetTransport(tr http.RoundTripper) {
+	self.client.Transport = tr
+}
+
+//
+// Get current Transport
+//
+func (self *HttpClient) GetTransport() http.RoundTripper {
+	return self.client.Transport
 }
 
 //
@@ -384,6 +402,8 @@ func (self *HttpClient) Request(method string, urlpath string, body io.Reader, h
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	req.Close = self.Close
 
 	self.addHeaders(req, headers)
 	return
