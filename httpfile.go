@@ -3,6 +3,7 @@ package httpclient
 import (
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 )
@@ -12,6 +13,7 @@ import (
 type HttpFile struct {
 	Url     string
 	Headers map[string]string
+	Debug   bool
 
 	client *http.Client
 	pos    int64
@@ -76,6 +78,10 @@ func (f *HttpFile) Size() int64 {
 
 // The ReaderAt interface
 func (f *HttpFile) ReadAt(p []byte, off int64) (int, error) {
+	if f.Debug {
+		log.Println("ReadAt", off, len(p))
+	}
+
 	if f.client == nil {
 		return 0, os.ErrInvalid
 	}
@@ -140,6 +146,10 @@ func (f *HttpFile) Close() error {
 
 // The Seeker interface
 func (f *HttpFile) Seek(offset int64, whence int) (int64, error) {
+	if f.Debug {
+		log.Println("Seek", offset, whence)
+	}
+
 	var newpos int64 = -1
 
 	if f.client != nil {
