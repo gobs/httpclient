@@ -93,8 +93,10 @@ func (f *HttpFile) ReadAt(p []byte, off int64) (int, error) {
 
 	bytes_range := fmt.Sprintf("bytes=%d-%d", off, off+int64(plen-1))
 	resp, err := f.do("GET", headers{"Range": bytes_range})
-	defer resp.Body.Close()
 
+	if resp != nil && resp.Body != nil {
+		defer resp.Body.Close()
+	}
 	if err != nil {
 		return 0, &HttpFileError{Err: err}
 	}
