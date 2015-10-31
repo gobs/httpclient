@@ -3,6 +3,7 @@ package httpclient
 import (
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/http/httputil"
 	"os"
@@ -100,5 +101,19 @@ func (p *ProgressReader) Close() error {
 		return rc.Close()
 	} else {
 		return nil
+	}
+}
+
+type DebugLog bool
+
+func (d DebugLog) Println(args ...interface{}) {
+	if d {
+		log.Println(args...)
+	}
+}
+
+func (d DebugLog) Printf(fmt string, args ...interface{}) {
+	if d {
+		log.Printf(fmt, args...)
 	}
 }
