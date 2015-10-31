@@ -3,7 +3,6 @@ package httpclient
 import (
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"os"
 )
@@ -34,9 +33,7 @@ func OpenHttpFile(url string, headers map[string]string) (*HttpFile, error) {
 	f := HttpFile{Url: url, Headers: headers, client: &http.Client{}, pos: 0, len: -1}
 
 	resp, err := f.do("HEAD", nil)
-	if resp != nil {
-		defer resp.Body.Close()
-	}
+	defer CloseResponse(resp)
 
 	if err != nil {
 		return nil, &HttpFileError{Err: err}
@@ -73,18 +70,13 @@ func (f *HttpFile) do(method string, headers map[string]string) (*http.Response,
 
 // Returns the file size
 func (f *HttpFile) Size() int64 {
-	if f.Debug {
-		log.Println("Size", f.len)
-	}
-
+	DebugLog(f.Debug).Println("Size", f.len)
 	return f.len
 }
 
 // The ReaderAt interface
 func (f *HttpFile) ReadAt(p []byte, off int64) (int, error) {
-	if f.Debug {
-		log.Println("ReadAt", off, len(p))
-	}
+	DebugLog(f.Debug).Println("ReadAt", off, len(p))
 
 	if f.client == nil {
 		return 0, os.ErrInvalid
@@ -97,11 +89,10 @@ func (f *HttpFile) ReadAt(p []byte, off int64) (int, error) {
 
 	bytes_range := fmt.Sprintf("bytes=%d-%d", off, off+int64(plen-1))
 	resp, err := f.do("GET", headers{"Range": bytes_range})
+	defer CloseResponse(resp)
 
-	if resp != nil && resp.Body != nil {
-		defer resp.Body.Close()
-	}
 	if err != nil {
+		DebugLog(f.Debug).Println("ReadAt error", err)
 		return 0, &HttpFileError{Err: err}
 	}
 	if resp.StatusCode == http.StatusRequestedRangeNotSatisfiable {
@@ -116,34 +107,23 @@ func (f *HttpFile) ReadAt(p []byte, off int64) (int, error) {
 	var first, last, total int64
 	n, err := fmt.Sscanf(content_range, "bytes %d-%d/%d", &first, &last, &total)
 	if err != nil {
-		if f.Debug {
-			log.Println("Error", err)
-		}
-
+		DebugLog(f.Debug).Println("Error", err)
 		return 0, err
 	}
 	if n != 3 {
 		return 0, &HttpFileError{Err: fmt.Errorf("Unexpected Content-Range %q (%d)", content_range, n)}
 	}
 
-	if f.Debug {
-		log.Println("Range", bytes_range, "Content-Range", content_range)
-	}
+	DebugLog(f.Debug).Println("Range", bytes_range, "Content-Range", content_range)
 
 	n, err = io.ReadFull(resp.Body, p)
 	if n > 0 && err == io.EOF {
 		// read reached EOF, but archive/zip doesn't like this!
-		if f.Debug {
-			log.Println("Read", n, "reached EOF")
-		}
-
+		DebugLog(f.Debug).Println("Read", n, "reached EOF")
 		err = nil
 	}
 
-	if f.Debug {
-		log.Println("Read", n, err)
-	}
-
+	DebugLog(f.Debug).Println("Read", n, err)
 	return n, err
 }
 
@@ -155,19 +135,13 @@ func (f *HttpFile) Read(p []byte) (int, error) {
 		f.pos += int64(n)
 	}
 
-	if f.Debug {
-		log.Println("Read", n, err)
-	}
-
+	DebugLog(f.Debug).Println("Read", n, err)
 	return n, err
 }
 
 // The Closer interface
 func (f *HttpFile) Close() error {
-	if f.Debug {
-		log.Println("Close")
-	}
-
+	DebugLog(f.Debug).Println("Close")
 	f.client = nil
 	f.pos = -1
 	f.len = -1
@@ -176,9 +150,7 @@ func (f *HttpFile) Close() error {
 
 // The Seeker interface
 func (f *HttpFile) Seek(offset int64, whence int) (int64, error) {
-	if f.Debug {
-		log.Println("Seek", offset, whence)
-	}
+	DebugLog(f.Debug).Println("Seek", offset, whence)
 
 	var newpos int64 = -1
 
