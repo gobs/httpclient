@@ -220,7 +220,10 @@ func Post(urlStr string, params map[string]interface{}) (*HttpResponse, error) {
 //  Read the body
 //
 func (resp *HttpResponse) Content() []byte {
-	body, _ := ioutil.ReadAll(resp.Body)
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Fatal(err, " - read ", len(body), " bytes")
+	}
 	resp.Body.Close()
 	return body
 }
@@ -375,9 +378,7 @@ func (self *HttpClient) checkRedirect(req *http.Request, via []*http.Request) er
 		return NoRedirect
 	}
 
-	if self.Verbose {
-		log.Println("REDIRECT:", len(via), req.URL)
-	}
+	DebugLog(self.Verbose).Println("REDIRECT:", len(via), req.URL)
 
 	if len(via) >= 10 {
 		return TooManyRedirects
@@ -413,25 +414,19 @@ func (self *HttpClient) Request(method string, urlpath string, body io.Reader, h
 // Execute request
 //
 func (self *HttpClient) Do(req *http.Request) (*HttpResponse, error) {
-	if self.Verbose {
-		log.Println("REQUEST:", req.Method, req.URL, pretty.PrettyFormat(req.Header))
-	}
+	DebugLog(self.Verbose).Println("REQUEST:", req.Method, req.URL, pretty.PrettyFormat(req.Header))
 
 	resp, err := self.client.Do(req)
 	if urlerr, ok := err.(*url.Error); ok && urlerr.Err == NoRedirect {
 		err = nil // redirect on HEAD is not an error
 	}
 	if err == nil {
-		if self.Verbose {
-			log.Println("RESPONSE:", resp.Status, pretty.PrettyFormat(resp.Header))
-		}
-
+		DebugLog(self.Verbose).Println("RESPONSE:", resp.Status, pretty.PrettyFormat(resp.Header))
 		return &HttpResponse{*resp}, nil
 	} else {
-		if self.Verbose {
-			log.Println("ERROR:", err, "REQUEST:", req.Method, req.URL, pretty.PrettyFormat(req.Header))
-		}
-
+		DebugLog(self.Verbose).Println("ERROR:", err,
+			"REQUEST:", req.Method, req.URL,
+			pretty.PrettyFormat(req.Header))
 		CloseResponse(resp)
 		return nil, err
 	}
