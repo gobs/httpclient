@@ -248,6 +248,9 @@ type HttpClient struct {
 	// the base URL for this client
 	BaseURL *url.URL
 
+	// overrides Host header
+	Host string
+
 	// the client UserAgent string
 	UserAgent string
 
@@ -405,6 +408,7 @@ func (self *HttpClient) Request(method string, urlpath string, body io.Reader, h
 	}
 
 	req.Close = self.Close
+	req.Host = self.Host
 
 	self.addHeaders(req, headers)
 	return
