@@ -30,7 +30,8 @@ func (lt *LoggingTransport) RoundTrip(req *http.Request) (resp *http.Response, e
 			dreq, _ = httputil.DumpRequest(req, false)
 		}
 		fmt.Println("ERROR:", err, "REQUEST:", strconv.Quote(string(dreq)))
-	} else {
+	}
+	if resp != nil {
 		dresp, _ := httputil.DumpResponse(resp, lt.responseBody)
 		fmt.Println("RESPONSE:", string(dresp))
 	}
