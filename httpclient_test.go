@@ -3,6 +3,7 @@ package httpclient
 import (
 	"bytes"
 	"io/ioutil"
+	"net/http"
 	"strconv"
 	"testing"
 )
@@ -131,4 +132,34 @@ func TestClientHeadRedirect(test *testing.T) {
 		location = resp.Header.Get("Location")
 	}
 	test.Log(err, location)
+}
+
+func TestRetryAfter(test *testing.T) {
+	response := HttpResponse{http.Response{
+		Status:        "503 Try Again",
+		StatusCode:    503,
+		Proto:         "HTTP/1.1",
+		ProtoMajor:    1,
+		ProtoMinor:    1,
+		Header:        http.Header{},
+		ContentLength: 0,
+	}}
+
+	response.Header.Set("Retry-After", "42")
+
+	err := response.ResponseError()
+	test.Logf("%v\n", err)
+
+	herr, ok := err.(HttpError)
+	if !ok {
+		test.Fail()
+	}
+
+	if herr.Code != 503 {
+		test.Fail()
+	}
+
+	if herr.RetryAfter == 0 {
+		test.Fail()
+	}
 }

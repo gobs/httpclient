@@ -55,8 +55,9 @@ func SetTimeout(t time.Duration) {
 // HTTP error
 //
 type HttpError struct {
-	Code    int
-	Message string
+	Code       int
+	Message    string
+	RetryAfter int
 }
 
 func (e HttpError) Error() string {
@@ -112,7 +113,13 @@ func (r *HttpResponse) Close() {
 func (r *HttpResponse) ResponseError() error {
 	class := r.StatusCode / 100
 	if class != 2 && class != 3 {
-		return HttpError{Code: r.StatusCode, Message: "HTTP " + r.Status}
+		rt := 0
+
+		if h := r.Header.Get("Retry-After"); h != "" {
+			rt, _ = strconv.Atoi(h)
+		}
+
+		return HttpError{Code: r.StatusCode, Message: "HTTP " + r.Status, RetryAfter: rt}
 	}
 
 	return nil
