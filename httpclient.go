@@ -475,6 +475,15 @@ func (self *HttpClient) Post(path string, content io.Reader, headers map[string]
 	return self.Do(req)
 }
 
+func (self *HttpClient) PostForm(path string, data url.Values, headers map[string]string) (*HttpResponse, error) {
+        if headers == nil {
+            headers = map[string]string{}
+        }
+	headers["Content-Type"] = "application/x-www-form-urlencoded"
+	req := self.Request("POST", path, strings.NewReader(data.Encode()), headers)
+	return self.Do(req)
+}
+
 //
 // Execute a PUT request
 //
