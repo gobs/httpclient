@@ -264,6 +264,9 @@ type HttpClient struct {
 	// Common headers to be passed on each request
 	Headers map[string]string
 
+	// Cookies to be passed on each request
+	Cookies []*http.Cookie
+
 	// if Verbose, log request and response info
 	Verbose bool
 
@@ -367,6 +370,10 @@ func (self *HttpClient) addHeaders(req *http.Request, headers map[string]string)
 		req.Header.Set(k, v)
 	}
 
+	for _, c := range self.Cookies {
+		req.AddCookie(c)
+	}
+
 	for k, v := range headers {
 		if strings.ToLower(k) == "content-length" {
 			if len, err := strconv.Atoi(v); err == nil && req.ContentLength <= 0 {
@@ -418,6 +425,7 @@ func (self *HttpClient) Request(method string, urlpath string, body io.Reader, h
 	req.Host = self.Host
 
 	self.addHeaders(req, headers)
+
 	return
 }
 
@@ -476,9 +484,9 @@ func (self *HttpClient) Post(path string, content io.Reader, headers map[string]
 }
 
 func (self *HttpClient) PostForm(path string, data url.Values, headers map[string]string) (*HttpResponse, error) {
-        if headers == nil {
-            headers = map[string]string{}
-        }
+	if headers == nil {
+		headers = map[string]string{}
+	}
 	headers["Content-Type"] = "application/x-www-form-urlencoded"
 	req := self.Request("POST", path, strings.NewReader(data.Encode()), headers)
 	return self.Do(req)
