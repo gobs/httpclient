@@ -59,6 +59,11 @@ func StopLogging() {
 	http.DefaultTransport = &http.Transport{}
 }
 
+// Wrap input transport into a LoggingTransport
+func LoggedTransport(t *http.Transport, requestBody, responseBody bool) http.RoundTripper {
+	return &LoggingTransport{t, requestBody, responseBody}
+}
+
 // A Reader that "logs" progress
 
 type ProgressReader struct {
