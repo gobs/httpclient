@@ -112,6 +112,19 @@ func TestClientPost(test *testing.T) {
 	test.Log(err, string(resp.Content()))
 }
 
+func TestClientUpload(test *testing.T) {
+	client := NewHttpClient(BASE_URL)
+	client.UserAgent = "TestClient 0.1"
+	client.Verbose = true
+
+	data := []byte("the quick brown fox")
+
+	resp, err := client.UploadFile("POST", "post", "file", "testfile.txt", data, map[string]string{
+		"description": "testing file upload",
+	}, nil)
+	test.Log(err, string(resp.Content()))
+}
+
 func TestClientGetRedirect(test *testing.T) {
 	client := NewHttpClient(REDIRECT_URL)
 	client.UserAgent = "TestClient 0.1"

@@ -1,15 +1,19 @@
 package httpclient
 
 import (
+	"bytes"
 	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
+	"mime/multipart"
 	"net"
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
 	"reflect"
 	"strconv"
 	"strings"
@@ -416,7 +420,7 @@ func (self *HttpClient) Request(method string, urlpath string, body io.Reader, h
 		urlpath = u.String()
 	}
 
-	req, err := http.NewRequest(method, urlpath, body)
+	req, err := http.NewRequest(strings.ToUpper(method), urlpath, body)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -497,5 +501,49 @@ func (self *HttpClient) PostForm(path string, data url.Values, headers map[strin
 //
 func (self *HttpClient) Put(path string, content io.Reader, headers map[string]string) (*HttpResponse, error) {
 	req := self.Request("PUT", path, content, headers)
+	return self.Do(req)
+}
+
+//
+// Upload a file via form
+//
+func (self *HttpClient) UploadFile(method, path, fileParam, filePath string, payload []byte, params map[string]string, headers map[string]string) (*HttpResponse, error) {
+	var reader io.Reader
+
+	if payload == nil {
+		file, err := os.Open(filePath)
+		if err != nil {
+			return nil, err
+		}
+		defer file.Close()
+		reader = file
+	} else {
+		reader = bytes.NewReader(payload)
+	}
+
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	part, err := writer.CreateFormFile(fileParam, filepath.Base(filePath))
+	if err == nil {
+		_, err = io.Copy(part, reader)
+	}
+	if err == nil {
+		for key, val := range params {
+			writer.WriteField(key, val)
+		}
+		err = writer.Close()
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	if headers == nil {
+		headers = map[string]string{}
+	}
+
+	headers["Content-Type"] = writer.FormDataContentType()
+	headers["Content-Length"] = strconv.Itoa(body.Len())
+	req := self.Request(method, path, body, headers)
+
 	return self.Do(req)
 }
