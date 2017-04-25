@@ -62,6 +62,7 @@ type HttpError struct {
 	Code       int
 	Message    string
 	RetryAfter int
+	Body       []byte
 }
 
 func (e HttpError) Error() string {
