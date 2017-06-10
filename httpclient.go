@@ -272,6 +272,9 @@ type HttpClient struct {
 	// Cookies to be passed on each request
 	Cookies []*http.Cookie
 
+	// if FollowRedirects is false, a 30x response will be returned as is
+	FollowRedirects bool
+
 	// if Verbose, log request and response info
 	Verbose bool
 
@@ -287,6 +290,7 @@ func NewHttpClient(base string) (httpClient *HttpClient) {
 	httpClient = new(HttpClient)
 	httpClient.client = &http.Client{CheckRedirect: httpClient.checkRedirect}
 	httpClient.Headers = make(map[string]string)
+	httpClient.FollowRedirects = true
 
 	if u, err := url.Parse(base); err != nil {
 		log.Fatal(err)
@@ -395,15 +399,30 @@ func (self *HttpClient) addHeaders(req *http.Request, headers map[string]string)
 // the callback for CheckRedirect, used to pass along the headers in case of redirection
 //
 func (self *HttpClient) checkRedirect(req *http.Request, via []*http.Request) error {
+	if !self.FollowRedirects {
+		// don't follow redirects if explicitly disabled
+		return NoRedirect
+	}
+
 	if req.Method == "HEAD" {
 		// don't follow redirects on a HEAD request
 		return NoRedirect
 	}
 
 	DebugLog(self.Verbose).Println("REDIRECT:", len(via), req.URL)
+	if len(req.Cookies()) > 0 {
+		DebugLog(self.Verbose).Println("COOKIES:", req.Cookies())
+	}
 
 	if len(via) >= 10 {
 		return TooManyRedirects
+	}
+
+	if len(via) > 0 {
+		last := via[len(via)-1]
+		if len(last.Cookies()) > 0 {
+			DebugLog(self.Verbose).Println("LAST COOKIES:", last.Cookies())
+		}
 	}
 
 	// TODO: check for same host before adding headers
