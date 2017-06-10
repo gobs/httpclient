@@ -20,7 +20,8 @@ type LoggingTransport struct {
 
 func (lt *LoggingTransport) RoundTrip(req *http.Request) (resp *http.Response, err error) {
 	dreq, _ := httputil.DumpRequest(req, lt.requestBody)
-	fmt.Println("REQUEST:", strconv.Quote(string(dreq)))
+	//fmt.Println("REQUEST:", strconv.Quote(string(dreq)))
+	fmt.Println("REQUEST:", string(dreq))
 	fmt.Println("")
 
 	resp, err = lt.t.RoundTrip(req)
