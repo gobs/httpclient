@@ -275,6 +275,9 @@ type HttpClient struct {
 	// if FollowRedirects is false, a 30x response will be returned as is
 	FollowRedirects bool
 
+	// if HeadRedirects is true, the client will follow the redirect also for HEAD requests
+	HeadRedirects bool
+
 	// if Verbose, log request and response info
 	Verbose bool
 
@@ -404,7 +407,7 @@ func (self *HttpClient) checkRedirect(req *http.Request, via []*http.Request) er
 		return NoRedirect
 	}
 
-	if req.Method == "HEAD" {
+	if req.Method == "HEAD" && !self.HeadRedirects {
 		// don't follow redirects on a HEAD request
 		return NoRedirect
 	}
