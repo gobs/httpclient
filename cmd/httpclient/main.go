@@ -4,13 +4,11 @@ import (
 	"github.com/gobs/args"
 	"github.com/gobs/cmd"
 	"github.com/gobs/httpclient"
-	"github.com/gobs/simplejson"
+	// "github.com/gobs/simplejson"
 
-	"bytes"
 	"fmt"
 	"net/url"
 	"os"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -34,6 +32,28 @@ func CompletionFunction(text, line string) (matches []string) {
 	}
 
 	return
+}
+
+func request(client *httpclient.HttpClient, method, params string) {
+	options := []httpclient.RequestOption{client.Method(method)}
+	args := args.ParseArgs(params)
+
+	if len(args.Arguments) > 0 {
+		options = append(options, client.Path(args.Arguments[0]))
+	}
+
+	if len(args.Arguments) > 1 {
+		data := strings.Join(args.Arguments[1:], " ")
+		options = append(options, client.Body(strings.NewReader(data)))
+	}
+
+	res, err := client.SendRequest(options...)
+	if err != nil {
+		fmt.Println(err)
+	} else {
+		body := res.Content()
+		fmt.Println(string(body))
+	}
 }
 
 func main() {
@@ -106,83 +126,71 @@ func main() {
 		},
 		nil})
 
-	commander.Add(cmd.Command{"http",
+	commander.Add(cmd.Command{
+		"verbose",
+		`verbose [true|false]`,
+		func(line string) (stop bool) {
+			if line != "" {
+				val, err := strconv.ParseBool(line)
+				if err != nil {
+					fmt.Println(err)
+					return
+				}
+
+				client.Verbose = val
+			}
+
+			fmt.Println("Verbose", client.Verbose)
+			return
+		},
+		nil})
+
+	commander.Add(cmd.Command{"get",
 		`
-                http [-get|-post|-head|-delete] url data
+                get [url-path] [short-data]
                 `,
 		func(line string) (stop bool) {
-			args := args.ParseArgs(line)
+			request(client, "get", line)
+			return
+		},
+		nil})
 
-			if len(args.Arguments) < 1 {
-				fmt.Println("missing url")
-				return
-			}
+	commander.Add(cmd.Command{"head",
+		`
+                head [url-path] [short-data]
+                `,
+		func(line string) (stop bool) {
+			request(client, "head", line)
+			return
+		},
+		nil})
 
-			url := args.Arguments[0]
-			data := ""
+	commander.Add(cmd.Command{"post",
+		`
+                post [url-path] [short-data]
+                `,
+		func(line string) (stop bool) {
+			request(client, "post", line)
+			return
+		},
+		nil})
 
-			if len(args.Arguments) > 1 {
-				data = strings.Join(args.Arguments[1:], " ")
-			}
+	commander.Add(cmd.Command{"put",
+		`
+                put [url-path] [short-data]
+                `,
+		func(line string) (stop bool) {
+			request(client, "put", line)
+			return
+		},
+		nil})
 
-			params := make(simplejson.Bag)
-			headers := make(map[string]string)
-
-			var res *httpclient.HttpResponse
-			var err error
-
-			if len(args.Options) == 0 { // no options
-				args.Options["get"] = "true"
-			}
-
-			for !interrupted {
-				if _, ok := args.Options["get"]; ok {
-					if len(data) > 0 {
-						fmt.Println("can't GET with data")
-						return
-					}
-					res, err = client.Get(url, params, headers)
-				} else if _, ok := args.Options["head"]; ok {
-					if len(data) > 0 {
-						fmt.Println("can't HEAD with data")
-						return
-					}
-					res, err = client.Head(url, params, headers)
-				} else if _, ok := args.Options["delete"]; ok {
-					if len(data) > 0 {
-						fmt.Println("can't DELETE with data")
-						return
-					}
-					res, err = client.Delete(url, headers)
-				} else if _, ok := args.Options["post"]; ok {
-					res, err = client.Post(url, bytes.NewReader([]byte(data)), headers)
-				}
-
-				if err != nil {
-					fmt.Println("REQUEST FAILED:", err)
-					break
-				}
-
-				body := res.Content()
-				fmt.Println(string(body))
-
-				if pattern, ok := args.Options["wait"]; ok {
-					match, err := regexp.Match(pattern, body)
-					if err != nil {
-						fmt.Println("MATCH ERROR:", err)
-						break
-					}
-
-					if !match && !interrupted {
-						time.Sleep(time.Second)
-						continue
-					}
-				}
-
-				break
-			}
-
-			interrupted = false
+	commander.Add(cmd.Command{"delete",
+		`
+                delete [url-path] [short-data]
+                `,
+		func(line string) (stop bool) {
+			request(client, "delete", line)
 			return
 		},
 		nil})
@@ -195,6 +203,18 @@ func main() {
 			return true
 		},
 		nil})
+
+	switch len(os.Args) {
+	case 1: // program name only
+		break
+
+	case 2: // one arg - expect URL
+		commander.OneCmd("base " + os.Args[1])
+
+	default:
+		fmt.Println("usage:", os.Args[0], "[base-url]")
+		return
+	}
 
 	commander.CmdLoop()
 }
