@@ -295,11 +295,13 @@ func NewHttpClient(base string) (httpClient *HttpClient) {
 	httpClient.Headers = make(map[string]string)
 	httpClient.FollowRedirects = true
 
-	if u, err := url.Parse(base); err != nil {
-		log.Fatal(err)
-	} else {
-		httpClient.BaseURL = u
-	}
+        if base != "" {
+            if u, err := url.Parse(base); err != nil {
+                    log.Fatal(err)
+            } else {
+                    httpClient.BaseURL = u
+            }
+        }
 
 	return
 }
@@ -455,6 +457,127 @@ func (self *HttpClient) Request(method string, urlpath string, body io.Reader, h
 
 	return
 }
+
+////////////////////////////////////////////////////////////////////////////////////
+
+type RequestOption func(req *http.Request) error
+
+func (c *HttpClient) Method(m string) RequestOption {
+	return func(req *http.Request) error {
+		req.Method = m
+		return nil
+	}
+}
+
+func (c *HttpClient) Path(path string) RequestOption {
+	return func(req *http.Request) error {
+		u, err := c.BaseURL.Parse(path)
+		if err != nil {
+			return err
+		}
+
+		req.URL = u
+		return nil
+	}
+}
+
+func (c *HttpClient) Params(params map[string]interface{}) RequestOption {
+	return func(req *http.Request) error {
+		u := req.URL.String()
+		req.URL = URLWithParams(u, params)
+		return nil
+	}
+}
+
+func (c *HttpClient) Body(r io.Reader) RequestOption {
+	return func(req *http.Request) error {
+		if r == nil {
+			req.Body = http.NoBody
+			req.ContentLength = 0
+			return nil
+		}
+
+		rc, ok := r.(io.ReadCloser)
+		if !ok {
+			rc = ioutil.NopCloser(r)
+		}
+
+		req.Body = rc
+
+		if v, ok := r.(interface {
+			Len() int
+		}); ok {
+			req.ContentLength = int64(v.Len())
+		}
+
+		return nil
+	}
+}
+
+func (c *HttpClient) JsonBody(body interface{}) RequestOption {
+	return func(req *http.Request) error {
+		b, err := simplejson.DumpBytes(body)
+		if err != nil {
+			return err
+		}
+		req.Body = ioutil.NopCloser(bytes.NewBuffer(b))
+		req.ContentLength = int64(len(b))
+		req.Header.Set("Content-Type", "application/json; charset=utf-8")
+		return nil
+	}
+}
+
+func (c *HttpClient) ContentType(ct string) RequestOption {
+	return func(req *http.Request) error {
+		req.Header.Set("Content-Type", ct)
+		return nil
+	}
+}
+
+func (c *HttpClient) ContentLength(l int64) RequestOption {
+	return func(req *http.Request) error {
+		req.ContentLength = l
+		return nil
+	}
+}
+
+func (c *HttpClient) Header(headers map[string]string) RequestOption {
+	return func(req *http.Request) error {
+		for k, v := range headers {
+			if strings.ToLower(k) == "content-length" {
+				if len, err := strconv.Atoi(v); err == nil && req.ContentLength <= 0 {
+					req.ContentLength = int64(len)
+				}
+			} else {
+				req.Header.Set(k, v)
+			}
+		}
+
+		return nil
+	}
+}
+
+func (self *HttpClient) SendRequest(options ...RequestOption) (*HttpResponse, error) {
+	req, err := http.NewRequest("GET", self.BaseURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Close = self.Close
+	req.Host = self.Host
+
+	self.addHeaders(req, nil)
+
+	for _, opt := range options {
+		if err = opt(req); err != nil {
+			return nil, err
+		}
+	}
+
+	return self.Do(req)
+}
+
+////////////////////////////////////////////////////////////////////////////////////
 
 //
 // Execute request
