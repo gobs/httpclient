@@ -60,6 +60,8 @@ func main() {
 	var interrupted bool
 	var client = httpclient.NewHttpClient("")
 
+	client.UserAgent = "httpclient/0.1"
+
 	commander := &cmd.Cmd{
 		HistoryFile: ".httpclient_history",
 		Complete:    CompletionFunction,
@@ -141,6 +143,46 @@ func main() {
 			}
 
 			fmt.Println("Verbose", client.Verbose)
+			return
+		},
+		nil})
+
+	commander.Add(cmd.Command{
+		"agent",
+		`agent user-agent-string`,
+		func(line string) (stop bool) {
+			if line != "" {
+				client.UserAgent = line
+			}
+
+			fmt.Println("User-Agent:", client.UserAgent)
+			return
+		},
+		nil})
+
+	commander.Add(cmd.Command{
+		"header",
+		`header [name [value]]`,
+		func(line string) (stop bool) {
+			if line == "" {
+				if len(client.Headers) == 0 {
+					fmt.Println("No headers")
+				} else {
+					fmt.Println("Headers:")
+					for k, v := range client.Headers {
+						fmt.Printf("  %v: %v\n", k, v)
+					}
+				}
+
+				return
+			}
+
+			parts := strings.SplitN(line, " ", 2)
+			if len(parts) == 2 {
+				client.Headers[parts[0]] = parts[1]
+			}
+
+			fmt.Printf("%v: %v\n", parts[0], client.Headers[parts[0]])
 			return
 		},
 		nil})
