@@ -4,7 +4,7 @@ import (
 	"github.com/gobs/args"
 	"github.com/gobs/cmd"
 	"github.com/gobs/httpclient"
-	// "github.com/gobs/simplejson"
+	"github.com/gobs/simplejson"
 
 	"fmt"
 	"net/url"
@@ -34,7 +34,7 @@ func CompletionFunction(text, line string) (matches []string) {
 	return
 }
 
-func request(client *httpclient.HttpClient, method, params string) {
+func request(client *httpclient.HttpClient, method, params string) *httpclient.HttpResponse {
 	options := []httpclient.RequestOption{client.Method(method)}
 	args := args.ParseArgs(params)
 
@@ -48,12 +48,17 @@ func request(client *httpclient.HttpClient, method, params string) {
 	}
 
 	res, err := client.SendRequest(options...)
+	if err == nil {
+		err = res.ResponseError()
+	}
 	if err != nil {
-		fmt.Println(err)
+		fmt.Println("ERROR:", err)
 	} else {
 		body := res.Content()
 		fmt.Println(string(body))
 	}
+
+	return res
 }
 
 func main() {
@@ -202,7 +207,10 @@ func main() {
                 head [url-path] [short-data]
                 `,
 		func(line string) (stop bool) {
-			request(client, "head", line)
+			res := request(client, "head", line)
+			if res != nil {
+				fmt.Println(simplejson.MustDumpString(res.Header, simplejson.Indent("  ")))
+			}
 			return
 		},
 		nil})
