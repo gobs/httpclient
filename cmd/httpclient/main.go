@@ -123,6 +123,7 @@ func main() {
 				commander.Prompt = fmt.Sprintf("%v> ", client.BaseURL)
 			}
 
+			fmt.Println("base", client.BaseURL)
 			return
 		},
 		nil})
@@ -140,6 +141,9 @@ func main() {
 
 				client.AllowInsecure(val)
 			}
+
+			// assume if there is a transport, it's because we set AllowInsecure
+			fmt.Println("insecure", client.GetTransport() != nil)
 
 			return
 		},
@@ -159,6 +163,7 @@ func main() {
 				client.SetTimeout(val)
 			}
 
+			fmt.Println("timeout", client.GetTimeout())
 			return
 		},
 		nil})

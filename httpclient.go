@@ -347,6 +347,13 @@ func (self *HttpClient) SetTimeout(t time.Duration) {
 }
 
 //
+// Get connection timeout
+//
+func (self *HttpClient) GetTimeout() time.Duration {
+	return self.client.Timeout
+}
+
+//
 // Set LocalAddr in Dialer
 // (this assumes you also want the SO_REUSEPORT/SO_REUSEADDR stuff)
 //
