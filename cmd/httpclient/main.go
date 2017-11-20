@@ -53,12 +53,42 @@ func request(client *httpclient.HttpClient, method, params string) *httpclient.H
 	}
 	if err != nil {
 		fmt.Println("ERROR:", err)
-	} else {
-		body := res.Content()
-		fmt.Println(string(body))
+	}
+
+	body := res.Content()
+	if len(body) > 0 {
+		if strings.Contains(res.Header.Get("Content-Type"), "json") {
+			jbody, err := simplejson.LoadBytes(body)
+			if err != nil {
+				fmt.Println(err)
+			} else {
+				fmt.Println(simplejson.MustDumpString(jbody.Data(), simplejson.Indent("  ")))
+			}
+		} else {
+			fmt.Println(string(body))
+		}
 	}
 
 	return res
+}
+
+func headerName(s string) string {
+	s = strings.ToLower(s)
+	parts := strings.Split(s, "-")
+	for i, p := range parts {
+		if len(p) > 0 {
+			parts[i] = strings.ToUpper(p[0:1]) + p[1:]
+		}
+	}
+	return strings.Join(parts, "-")
+}
+
+func unquote(s string) string {
+	if res, err := strconv.Unquote(s); err == nil {
+		return res
+	}
+
+	return s
 }
 
 func main() {
@@ -182,12 +212,14 @@ func main() {
 				return
 			}
 
-			parts := strings.SplitN(line, " ", 2)
+			parts := args.GetArgsN(line, 2)
+			name := headerName(parts[0])
+
 			if len(parts) == 2 {
-				client.Headers[parts[0]] = parts[1]
+				client.Headers[name] = unquote(parts[1])
 			}
 
-			fmt.Printf("%v: %v\n", parts[0], client.Headers[parts[0]])
+			fmt.Printf("%v: %v\n", name, client.Headers[name])
 			return
 		},
 		nil})
