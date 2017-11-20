@@ -232,6 +232,9 @@ func Post(urlStr string, params map[string]interface{}) (*HttpResponse, error) {
 //  Read the body
 //
 func (resp *HttpResponse) Content() []byte {
+	if resp == nil {
+		return nil
+	}
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		log.Fatal(err, " - read ", len(body), " bytes")
