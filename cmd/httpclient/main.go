@@ -5,6 +5,7 @@ import (
 	"github.com/gobs/cmd"
 	"github.com/gobs/httpclient"
 	"github.com/gobs/simplejson"
+	"github.com/oliveagle/jsonpath"
 
 	"fmt"
 	"net/url"
@@ -16,6 +17,7 @@ import (
 
 var (
 	completion_words = []string{}
+	env              = map[string]string{}
 )
 
 func CompletionFunction(text, line string) (matches []string) {
@@ -35,6 +37,9 @@ func CompletionFunction(text, line string) (matches []string) {
 }
 
 func request(client *httpclient.HttpClient, method, params string) *httpclient.HttpResponse {
+	env["error"] = ""
+	env["body"] = ""
+
 	options := []httpclient.RequestOption{client.Method(method)}
 	args := args.ParseArgs(params)
 
@@ -57,6 +62,7 @@ func request(client *httpclient.HttpClient, method, params string) *httpclient.H
 	}
 	if err != nil {
 		fmt.Println("ERROR:", err)
+		env["error"] = err.Error()
 	}
 
 	body := res.Content()
@@ -73,6 +79,7 @@ func request(client *httpclient.HttpClient, method, params string) *httpclient.H
 		}
 	}
 
+	env["body"] = string(body)
 	return res
 }
 
@@ -110,7 +117,7 @@ func main() {
 
 	commander.Init()
 
-	commander.Vars = map[string]string{}
+	commander.Vars = env
 
 	commander.Add(cmd.Command{
 		"base",
@@ -282,6 +289,43 @@ func main() {
                 `,
 		func(line string) (stop bool) {
 			request(client, "delete", line)
+			return
+		},
+		nil})
+
+	commander.Add(cmd.Command{
+		"jsonpath",
+		`jsonpath path {json}`,
+		func(line string) (stop bool) {
+			parts := args.GetArgsN(line, 2)
+			if len(parts) != 2 {
+				fmt.Println("use: jsonpath path {json}")
+				env["error"] = "invalid-usage"
+				return
+			}
+
+			path := parts[0]
+			if !strings.HasPrefix(path, "$.") {
+				path = "$." + path
+			}
+
+			jbody, err := simplejson.LoadString(parts[1])
+			if err != nil {
+				fmt.Println(err)
+				env["error"] = err.Error()
+				return
+			}
+
+			res, err := jsonpath.JsonPathLookup(jbody.Data(), path)
+			if err != nil {
+				fmt.Println(err)
+				env["error"] = err.Error()
+			} else {
+				fmt.Println(res)
+				env["error"] = ""
+				env["json"] = simplejson.MustDumpString(res)
+			}
+
 			return
 		},
 		nil})
