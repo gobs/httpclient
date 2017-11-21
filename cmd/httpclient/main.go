@@ -311,14 +311,14 @@ func main() {
 
 			jbody, err := simplejson.LoadString(parts[1])
 			if err != nil {
-				fmt.Println(err)
+				fmt.Println("json:", err)
 				env["error"] = err.Error()
 				return
 			}
 
 			res, err := jsonpath.JsonPathLookup(jbody.Data(), path)
 			if err != nil {
-				fmt.Println(err)
+				fmt.Println("jsonpath:", err)
 				env["error"] = err.Error()
 			} else {
 				fmt.Println(res)
