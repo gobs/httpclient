@@ -95,7 +95,7 @@ func headerName(s string) string {
 }
 
 func unquote(s string) string {
-	if res, err := strconv.Unquote(s); err == nil {
+	if res, err := strconv.Unquote(strings.TrimSpace(s)); err == nil {
 		return res
 	}
 
@@ -321,9 +321,9 @@ func main() {
 				fmt.Println("jsonpath:", err)
 				env["error"] = err.Error()
 			} else {
-				fmt.Println(res)
+				fmt.Println(simplejson.MustDumpString(res, simplejson.Indent("  ")))
 				env["error"] = ""
-				env["json"] = simplejson.MustDumpString(res)
+				env["json"] = unquote(simplejson.MustDumpString(res))
 			}
 
 			return
@@ -343,8 +343,13 @@ func main() {
 	case 1: // program name only
 		break
 
-	case 2: // one arg - expect URL
-		commander.OneCmd("base " + os.Args[1])
+	case 2: // one arg - expect URL or @filename
+		cmd := os.Args[1]
+		if !strings.HasPrefix(cmd, "@") {
+			cmd = "base " + cmd
+		}
+
+		commander.OneCmd(cmd)
 
 	default:
 		fmt.Println("usage:", os.Args[0], "[base-url]")
