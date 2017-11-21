@@ -47,6 +47,10 @@ func request(client *httpclient.HttpClient, method, params string) *httpclient.H
 		options = append(options, client.Body(strings.NewReader(data)))
 	}
 
+	if len(args.Options) > 0 {
+		options = append(options, client.StringParams(args.Options))
+	}
+
 	res, err := client.SendRequest(options...)
 	if err == nil {
 		err = res.ResponseError()

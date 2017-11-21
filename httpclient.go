@@ -499,6 +499,17 @@ func (c *HttpClient) Params(params map[string]interface{}) RequestOption {
 	}
 }
 
+func (c *HttpClient) StringParams(params map[string]string) RequestOption {
+	return func(req *http.Request) error {
+		q := req.URL.Query()
+		for k, v := range params {
+			q.Set(k, v)
+		}
+		req.URL.RawQuery = q.Encode()
+		return nil
+	}
+}
+
 func (c *HttpClient) Body(r io.Reader) RequestOption {
 	return func(req *http.Request) error {
 		if r == nil {
