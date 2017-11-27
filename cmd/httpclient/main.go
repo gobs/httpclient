@@ -72,7 +72,7 @@ func request(client *httpclient.HttpClient, method, params string) *httpclient.H
 			if err != nil {
 				fmt.Println(err)
 			} else {
-				fmt.Println(simplejson.MustDumpString(jbody.Data(), simplejson.Indent("  ")))
+				printJson(jbody.Data())
 			}
 		} else {
 			fmt.Println(string(body))
@@ -100,6 +100,10 @@ func unquote(s string) string {
 	}
 
 	return s
+}
+
+func printJson(v interface{}) {
+        fmt.Println(simplejson.MustDumpString(v, simplejson.Indent("  ")))
 }
 
 func main() {
@@ -257,7 +261,7 @@ func main() {
 		func(line string) (stop bool) {
 			res := request(client, "head", line)
 			if res != nil {
-				fmt.Println(simplejson.MustDumpString(res.Header, simplejson.Indent("  ")))
+				printJson(res.Header)
 			}
 			return
 		},
@@ -330,6 +334,21 @@ func main() {
 		},
 		nil})
 
+	commander.Add(cmd.Command{
+		"format",
+		`format object`,
+		func(line string) (stop bool) {
+			jbody, err := simplejson.LoadString(line)
+			if err != nil {
+				fmt.Println("json:", err)
+				env["error"] = err.Error()
+				return
+			}
+
+                        printJson(jbody.Data())
+                        return
+		},
+		nil})
 	commander.Add(cmd.Command{
 		"exit",
 		`exit script`,
