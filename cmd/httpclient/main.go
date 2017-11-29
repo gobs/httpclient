@@ -328,7 +328,7 @@ func main() {
 			}
 
 			jp := jsonpath.NewProcessor()
-			if err := jp.Parse(path); err != nil {
+			if !jp.Parse(path) {
 				env["error"] = fmt.Sprintf("failed to parse %q", path)
 				return // syntax error
 			}
