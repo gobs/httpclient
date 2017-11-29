@@ -4,8 +4,8 @@ import (
 	"github.com/gobs/args"
 	"github.com/gobs/cmd"
 	"github.com/gobs/httpclient"
+	"github.com/gobs/jsonpath"
 	"github.com/gobs/simplejson"
-	"github.com/oliveagle/jsonpath"
 
 	"fmt"
 	"net/url"
@@ -36,7 +36,7 @@ func CompletionFunction(text, line string) (matches []string) {
 	return
 }
 
-func request(client *httpclient.HttpClient, method, params string) *httpclient.HttpResponse {
+func request(client *httpclient.HttpClient, method, params string, print bool) *httpclient.HttpResponse {
 	env["error"] = ""
 	env["body"] = ""
 
@@ -66,7 +66,7 @@ func request(client *httpclient.HttpClient, method, params string) *httpclient.H
 	}
 
 	body := res.Content()
-	if len(body) > 0 {
+	if len(body) > 0 && print {
 		if strings.Contains(res.Header.Get("Content-Type"), "json") {
 			jbody, err := simplejson.LoadBytes(body)
 			if err != nil {
@@ -103,7 +103,7 @@ func unquote(s string) string {
 }
 
 func printJson(v interface{}) {
-        fmt.Println(simplejson.MustDumpString(v, simplejson.Indent("  ")))
+	fmt.Println(simplejson.MustDumpString(v, simplejson.Indent("  ")))
 }
 
 func main() {
@@ -122,6 +122,7 @@ func main() {
 	commander.Init()
 
 	commander.Vars = env
+	commander.SetVar("print", true)
 
 	commander.Add(cmd.Command{
 		"base",
@@ -136,6 +137,9 @@ func main() {
 
 				client.BaseURL = val
 				commander.Prompt = fmt.Sprintf("%v> ", client.BaseURL)
+				if !commander.GetBoolVar("print") {
+					return
+				}
 			}
 
 			fmt.Println("base", client.BaseURL)
@@ -237,19 +241,12 @@ func main() {
 
 			if len(parts) == 2 {
 				client.Headers[name] = unquote(parts[1])
+				if !commander.GetBoolVar("print") {
+					return
+				}
 			}
 
 			fmt.Printf("%v: %v\n", name, client.Headers[name])
-			return
-		},
-		nil})
-
-	commander.Add(cmd.Command{"get",
-		`
-                get [url-path] [short-data]
-                `,
-		func(line string) (stop bool) {
-			request(client, "get", line)
 			return
 		},
 		nil})
@@ -259,10 +256,20 @@ func main() {
                 head [url-path] [short-data]
                 `,
 		func(line string) (stop bool) {
-			res := request(client, "head", line)
+			res := request(client, "head", line, false)
 			if res != nil {
 				printJson(res.Header)
 			}
+			return
+		},
+		nil})
+
+	commander.Add(cmd.Command{"get",
+		`
+                get [url-path] [short-data]
+                `,
+		func(line string) (stop bool) {
+			request(client, "get", line, commander.GetBoolVar("print"))
 			return
 		},
 		nil})
@@ -272,7 +279,7 @@ func main() {
                 post [url-path] [short-data]
                 `,
 		func(line string) (stop bool) {
-			request(client, "post", line)
+			request(client, "post", line, commander.GetBoolVar("print"))
 			return
 		},
 		nil})
@@ -282,7 +289,7 @@ func main() {
                 put [url-path] [short-data]
                 `,
 		func(line string) (stop bool) {
-			request(client, "put", line)
+			request(client, "put", line, commander.GetBoolVar("print"))
 			return
 		},
 		nil})
@@ -292,7 +299,7 @@ func main() {
                 delete [url-path] [short-data]
                 `,
 		func(line string) (stop bool) {
-			request(client, "delete", line)
+			request(client, "delete", line, commander.GetBoolVar("print"))
 			return
 		},
 		nil})
@@ -320,16 +327,18 @@ func main() {
 				return
 			}
 
-			res, err := jsonpath.JsonPathLookup(jbody.Data(), path)
-			if err != nil {
-				fmt.Println("jsonpath:", err)
-				env["error"] = err.Error()
-			} else {
-				fmt.Println(simplejson.MustDumpString(res, simplejson.Indent("  ")))
-				env["error"] = ""
-				env["json"] = unquote(simplejson.MustDumpString(res))
+			jp := jsonpath.NewProcessor()
+			if err := jp.Parse(path); err != nil {
+				env["error"] = fmt.Sprintf("failed to parse %q", path)
+				return // syntax error
 			}
 
+			res := jp.Process(jbody)
+			if commander.GetBoolVar("print") {
+				printJson(res)
+			}
+			env["error"] = ""
+			env["json"] = unquote(simplejson.MustDumpString(res))
 			return
 		},
 		nil})
@@ -345,8 +354,8 @@ func main() {
 				return
 			}
 
-                        printJson(jbody.Data())
-                        return
+			printJson(jbody.Data())
+			return
 		},
 		nil})
 	commander.Add(cmd.Command{
@@ -357,6 +366,8 @@ func main() {
 			return true
 		},
 		nil})
+
+	commander.Commands["set"] = commander.Commands["var"]
 
 	switch len(os.Args) {
 	case 1: // program name only
