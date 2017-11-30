@@ -136,7 +136,7 @@ func main() {
 				}
 
 				client.BaseURL = val
-				commander.Prompt = fmt.Sprintf("%v> ", client.BaseURL)
+				commander.SetPrompt(fmt.Sprintf("%v> ", client.BaseURL), 40)
 				if !commander.GetBoolVar("print") {
 					return
 				}
@@ -306,11 +306,25 @@ func main() {
 
 	commander.Add(cmd.Command{
 		"jsonpath",
-		`jsonpath path {json}`,
+		`jsonpath [-e] [-c] path {json}`,
 		func(line string) (stop bool) {
+			var joptions jsonpath.ProcessOptions
+
+			options, line := args.GetOptions(line)
+			for _, o := range options {
+				if o == "-e" || o == "--enhanced" {
+					joptions |= jsonpath.Enhanced
+				} else if o == "-c" || o == "--collapse" {
+					joptions |= jsonpath.Collapse
+				} else {
+					line = "" // to force an error
+					break
+				}
+			}
+
 			parts := args.GetArgsN(line, 2)
 			if len(parts) != 2 {
-				fmt.Println("use: jsonpath path {json}")
+				fmt.Println("use: jsonpath [-e|--enhanced] path {json}")
 				env["error"] = "invalid-usage"
 				return
 			}
@@ -333,7 +347,7 @@ func main() {
 				return // syntax error
 			}
 
-			res := jp.Process(jbody)
+			res := jp.Process(jbody, joptions)
 			if commander.GetBoolVar("print") {
 				printJson(res)
 			}
