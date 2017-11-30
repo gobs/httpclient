@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -18,6 +19,8 @@ import (
 var (
 	completion_words = []string{}
 	env              = map[string]string{}
+
+	reFieldValue = regexp.MustCompile(`(\w[\d\w-]*)(=(.*))?`) // field-name=value
 )
 
 func CompletionFunction(text, line string) (matches []string) {
@@ -300,6 +303,99 @@ func main() {
                 `,
 		func(line string) (stop bool) {
 			request(client, "delete", line, commander.GetBoolVar("print"))
+			return
+		},
+		nil})
+
+	commander.Add(cmd.Command{"json",
+		`
+                json field1=value1 field2=value... // json object
+                json [value, value...]             // json array
+                `,
+		func(line string) (stop bool) {
+			var res interface{}
+			jsonmap := true
+
+			if strings.HasPrefix(line, "[") {
+				jsonmap = false
+
+				line = line[1:]
+				if strings.HasSuffix(line, "]") {
+					line = line[:len(line)-1]
+				}
+				line = strings.TrimSpace(line)
+			}
+
+			fields := args.GetArgs(line)
+
+			parseValue := func(v string) (interface{}, error) {
+				switch {
+				case strings.HasPrefix(v, "{") || strings.HasPrefix(v, "["):
+					j, err := simplejson.LoadString(v)
+					if err != nil {
+						return nil, fmt.Errorf("error parsing %q", v)
+					} else {
+						return j.Data(), nil
+					}
+
+				case v == "true":
+					return true, nil
+
+				case v == "false":
+					return false, nil
+
+				case v == "null":
+					return nil, nil
+
+				default:
+					return v, nil
+				}
+			}
+
+			if jsonmap {
+				var err error
+				mres := map[string]interface{}{}
+
+				for _, f := range fields {
+					matches := reFieldValue.FindStringSubmatch(f)
+					if len(matches) > 0 { // [field=value field =value value]
+						name, value := matches[1], matches[3]
+						mres[name], err = parseValue(value)
+
+						if err != nil {
+							fmt.Println(err)
+							env["error"] = err.Error()
+							return
+						}
+					} else {
+						fmt.Println("invalid name=value pair:", f)
+						env["error"] = "invalid name=value pair"
+						return
+					}
+				}
+
+				res = mres
+			} else {
+				var ares []interface{}
+
+				for _, f := range fields {
+					v, err := parseValue(f)
+					if err != nil {
+						fmt.Println(err)
+						env["error"] = err.Error()
+						return
+					}
+
+					ares = append(ares, v)
+				}
+			}
+
+			if commander.GetBoolVar("print") {
+				printJson(res)
+			}
+
+			env["error"] = ""
+			env["json"] = unquote(simplejson.MustDumpString(res))
 			return
 		},
 		nil})
