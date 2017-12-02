@@ -125,7 +125,7 @@ func main() {
 	commander.Init()
 
 	commander.Vars = env
-	commander.SetVar("print", true)
+	commander.SetVar("print", true, false)
 
 	commander.Add(cmd.Command{
 		"base",
@@ -140,7 +140,7 @@ func main() {
 
 				client.BaseURL = val
 				commander.SetPrompt(fmt.Sprintf("%v> ", client.BaseURL), 40)
-				if !commander.GetBoolVar("print") {
+				if !commander.GetBoolVar("print", true) {
 					return
 				}
 			}
@@ -244,7 +244,7 @@ func main() {
 
 			if len(parts) == 2 {
 				client.Headers[name] = unquote(parts[1])
-				if !commander.GetBoolVar("print") {
+				if !commander.GetBoolVar("print", true) {
 					return
 				}
 			}
@@ -272,7 +272,7 @@ func main() {
                 get [url-path] [short-data]
                 `,
 		func(line string) (stop bool) {
-			request(client, "get", line, commander.GetBoolVar("print"))
+			request(client, "get", line, commander.GetBoolVar("print", true))
 			return
 		},
 		nil})
@@ -282,7 +282,7 @@ func main() {
                 post [url-path] [short-data]
                 `,
 		func(line string) (stop bool) {
-			request(client, "post", line, commander.GetBoolVar("print"))
+			request(client, "post", line, commander.GetBoolVar("print", true))
 			return
 		},
 		nil})
@@ -292,7 +292,7 @@ func main() {
                 put [url-path] [short-data]
                 `,
 		func(line string) (stop bool) {
-			request(client, "put", line, commander.GetBoolVar("print"))
+			request(client, "put", line, commander.GetBoolVar("print", true))
 			return
 		},
 		nil})
@@ -302,7 +302,7 @@ func main() {
                 delete [url-path] [short-data]
                 `,
 		func(line string) (stop bool) {
-			request(client, "delete", line, commander.GetBoolVar("print"))
+			request(client, "delete", line, commander.GetBoolVar("print", true))
 			return
 		},
 		nil})
@@ -338,6 +338,15 @@ func main() {
 						return j.Data(), nil
 					}
 
+				case strings.HasPrefix(v, `"`):
+					return strings.Trim(v, `"`), nil
+
+				case strings.HasPrefix(v, `'`):
+					return strings.Trim(v, `'`), nil
+
+				case v == "":
+					return v, nil
+
 				case v == "true":
 					return true, nil
 
@@ -348,6 +357,13 @@ func main() {
 					return nil, nil
 
 				default:
+					if i, err := strconv.ParseInt(v, 10, 64); err == nil {
+						return i, nil
+					}
+					if f, err := strconv.ParseFloat(v, 64); err == nil {
+						return f, nil
+					}
+
 					return v, nil
 				}
 			}
@@ -390,7 +406,7 @@ func main() {
 				}
 			}
 
-			if commander.GetBoolVar("print") {
+			if commander.GetBoolVar("print", true) {
 				printJson(res)
 			}
 
@@ -444,7 +460,7 @@ func main() {
 			}
 
 			res := jp.Process(jbody, joptions)
-			if commander.GetBoolVar("print") {
+			if commander.GetBoolVar("print", true) {
 				printJson(res)
 			}
 			env["error"] = ""
