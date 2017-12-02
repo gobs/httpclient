@@ -109,6 +109,46 @@ func printJson(v interface{}) {
 	fmt.Println(simplejson.MustDumpString(v, simplejson.Indent("  ")))
 }
 
+func parseValue(v string) (interface{}, error) {
+	switch {
+	case strings.HasPrefix(v, "{") || strings.HasPrefix(v, "["):
+		j, err := simplejson.LoadString(v)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing %q", v)
+		} else {
+			return j.Data(), nil
+		}
+
+	case strings.HasPrefix(v, `"`):
+		return strings.Trim(v, `"`), nil
+
+	case strings.HasPrefix(v, `'`):
+		return strings.Trim(v, `'`), nil
+
+	case v == "":
+		return v, nil
+
+	case v == "true":
+		return true, nil
+
+	case v == "false":
+		return false, nil
+
+	case v == "null":
+		return nil, nil
+
+	default:
+		if i, err := strconv.ParseInt(v, 10, 64); err == nil {
+			return i, nil
+		}
+		if f, err := strconv.ParseFloat(v, 64); err == nil {
+			return f, nil
+		}
+
+		return v, nil
+	}
+}
+
 func main() {
 	var interrupted bool
 	var client = httpclient.NewHttpClient("")
@@ -309,70 +349,53 @@ func main() {
 
 	commander.Add(cmd.Command{"json",
 		`
-                json field1=value1 field2=value... // json object
-                json [value, value...]             // json array
+                json field1=value1 field2=value2...       // json object
+                json {"name1":"value1", "name2":"value2"}
+                json [value1 value2...]                   // json array
+                json [value1, value2...]
                 `,
 		func(line string) (stop bool) {
 			var res interface{}
-			jsonmap := true
 
-			if strings.HasPrefix(line, "[") {
-				jsonmap = false
+			if strings.HasPrefix(line, "{") { // assume is already a JSON object
 
-				line = line[1:]
-				if strings.HasSuffix(line, "]") {
-					line = line[:len(line)-1]
+				if jbody, err := simplejson.LoadString(line); err != nil {
+					err = fmt.Errorf("error parsing object %q", line)
+					env["error"] = err.Error()
+					fmt.Println(err)
+					return
+				} else {
+					res = jbody.Data()
 				}
-				line = strings.TrimSpace(line)
-			}
+			} else if strings.HasPrefix(line, "[") { // could be a JSON array
 
-			fields := args.GetArgs(line)
+				if jbody, err := simplejson.LoadString(line); err == nil {
+					res = jbody.Data()
+				} else { // try a sequence of values (that need to be parsed)
+					line = strings.TrimPrefix(line, "[")
+					line = strings.TrimSuffix(line, "]")
+					line = strings.TrimSpace(line)
 
-			parseValue := func(v string) (interface{}, error) {
-				switch {
-				case strings.HasPrefix(v, "{") || strings.HasPrefix(v, "["):
-					j, err := simplejson.LoadString(v)
-					if err != nil {
-						return nil, fmt.Errorf("error parsing %q", v)
-					} else {
-						return j.Data(), nil
+					var ares []interface{}
+
+					for _, f := range args.GetArgs(line) {
+						v, err := parseValue(f)
+						if err != nil {
+							fmt.Println(err)
+							env["error"] = err.Error()
+							return
+						}
+
+						ares = append(ares, v)
 					}
 
-				case strings.HasPrefix(v, `"`):
-					return strings.Trim(v, `"`), nil
-
-				case strings.HasPrefix(v, `'`):
-					return strings.Trim(v, `'`), nil
-
-				case v == "":
-					return v, nil
-
-				case v == "true":
-					return true, nil
-
-				case v == "false":
-					return false, nil
-
-				case v == "null":
-					return nil, nil
-
-				default:
-					if i, err := strconv.ParseInt(v, 10, 64); err == nil {
-						return i, nil
-					}
-					if f, err := strconv.ParseFloat(v, 64); err == nil {
-						return f, nil
-					}
-
-					return v, nil
+					res = ares
 				}
-			}
-
-			if jsonmap {
+			} else { // a sequence of name=value pairs
 				var err error
 				mres := map[string]interface{}{}
 
-				for _, f := range fields {
+				for _, f := range args.GetArgs(line) {
 					matches := reFieldValue.FindStringSubmatch(f)
 					if len(matches) > 0 { // [field=value field =value value]
 						name, value := matches[1], matches[3]
@@ -391,19 +414,6 @@ func main() {
 				}
 
 				res = mres
-			} else {
-				var ares []interface{}
-
-				for _, f := range fields {
-					v, err := parseValue(f)
-					if err != nil {
-						fmt.Println(err)
-						env["error"] = err.Error()
-						return
-					}
-
-					ares = append(ares, v)
-				}
 			}
 
 			if commander.GetBoolVar("print", true) {
