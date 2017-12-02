@@ -395,7 +395,7 @@ func main() {
 				var err error
 				mres := map[string]interface{}{}
 
-				for _, f := range args.GetArgs(line) {
+				for _, f := range args.GetArgs(line, args.InfieldBrackets()) {
 					matches := reFieldValue.FindStringSubmatch(f)
 					if len(matches) > 0 { // [field=value field =value value]
 						name, value := matches[1], matches[3]
