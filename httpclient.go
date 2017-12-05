@@ -298,12 +298,10 @@ func NewHttpClient(base string) (httpClient *HttpClient) {
 	httpClient.Headers = make(map[string]string)
 	httpClient.FollowRedirects = true
 
-	if base != "" {
-		if u, err := url.Parse(base); err != nil {
-			log.Fatal(err)
-		} else {
-			httpClient.BaseURL = u
-		}
+	if u, err := url.Parse(base); err != nil {
+		log.Fatal(err)
+	} else {
+		httpClient.BaseURL = u
 	}
 
 	return
@@ -475,6 +473,13 @@ type RequestOption func(req *http.Request) error
 func (c *HttpClient) Method(m string) RequestOption {
 	return func(req *http.Request) error {
 		req.Method = strings.ToUpper(m)
+		return nil
+	}
+}
+
+func (c *HttpClient) URL(u *url.URL) RequestOption {
+	return func(req *http.Request) error {
+		req.URL = u
 		return nil
 	}
 }
