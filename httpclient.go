@@ -66,11 +66,19 @@ type HttpError struct {
 }
 
 func (e HttpError) Error() string {
-	return e.Message
+	if len(e.Body) > 0 {
+		return fmt.Sprintf("%v %s", e.Message, e.Body)
+	} else {
+		return e.Message
+	}
 }
 
 func (e HttpError) String() string {
-	return fmt.Sprintf("ERROR: %v %v", e.Code, e.Message)
+	if len(e.Body) > 0 {
+		return fmt.Sprintf("ERROR: %v %v %s", e.Code, e.Message, e.Body)
+	} else {
+		return fmt.Sprintf("ERROR: %v %v", e.Code, e.Message)
+	}
 }
 
 //
