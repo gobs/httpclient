@@ -3,8 +3,9 @@ package main
 import (
 	"github.com/gobs/args"
 	"github.com/gobs/cmd"
+	"github.com/gobs/cmd/plugins/controlflow"
+	"github.com/gobs/cmd/plugins/json"
 	"github.com/gobs/httpclient"
-	"github.com/gobs/jsonpath"
 	"github.com/gobs/simplejson"
 
 	"fmt"
@@ -17,31 +18,12 @@ import (
 )
 
 var (
-	completion_words = []string{}
-	env              = map[string]string{}
-
 	reFieldValue = regexp.MustCompile(`(\w[\d\w-]*)(=(.*))?`) // field-name=value
 )
 
-func CompletionFunction(text, line string) (matches []string) {
-	// for the "ls" command we let readline show real file names
-	if strings.HasPrefix(line, "ls ") {
-		return
-	}
-
-	// for all other commands, we pick from our list of completion words
-	for _, w := range completion_words {
-		if strings.HasPrefix(w, text) {
-			matches = append(matches, w)
-		}
-	}
-
-	return
-}
-
-func request(client *httpclient.HttpClient, method, params string, print bool) *httpclient.HttpResponse {
-	env["error"] = ""
-	env["body"] = ""
+func request(cmd *cmd.Cmd, client *httpclient.HttpClient, method, params string, print bool) *httpclient.HttpResponse {
+	cmd.SetVar("error", "", true)
+	cmd.SetVar("body", "", true)
 
 	options := []httpclient.RequestOption{client.Method(method)}
 	args := args.ParseArgs(params)
@@ -65,7 +47,7 @@ func request(client *httpclient.HttpClient, method, params string, print bool) *
 	}
 	if err != nil {
 		fmt.Println("ERROR:", err)
-		env["error"] = err.Error()
+		cmd.SetVar("error", err, true)
 	}
 
 	body := res.Content()
@@ -75,14 +57,14 @@ func request(client *httpclient.HttpClient, method, params string, print bool) *
 			if err != nil {
 				fmt.Println(err)
 			} else {
-				printJson(jbody.Data())
+				json.PrintJson(jbody.Data())
 			}
 		} else {
 			fmt.Println(string(body))
 		}
 	}
 
-	env["body"] = string(body)
+	cmd.SetVar("body", string(body), true)
 	return res
 }
 
@@ -103,10 +85,6 @@ func unquote(s string) string {
 	}
 
 	return s
-}
-
-func printJson(v interface{}) {
-	fmt.Println(simplejson.MustDumpString(v, simplejson.Indent("  ")))
 }
 
 func parseValue(v string) (interface{}, error) {
@@ -157,14 +135,12 @@ func main() {
 
 	commander := &cmd.Cmd{
 		HistoryFile: ".httpclient_history",
-		Complete:    CompletionFunction,
 		EnableShell: true,
 		Interrupt:   func(sig os.Signal) bool { interrupted = true; return false },
 	}
 
-	commander.Init()
+	commander.Init(controlflow.Plugin, json.Plugin)
 
-	commander.Vars = env
 	commander.SetVar("print", true, false)
 
 	commander.Add(cmd.Command{
@@ -180,7 +156,7 @@ func main() {
 
 				client.BaseURL = val
 				commander.SetPrompt(fmt.Sprintf("%v> ", client.BaseURL), 40)
-				if !commander.GetBoolVar("print", true) {
+				if !commander.GetBoolVar("print") {
 					return
 				}
 			}
@@ -250,6 +226,25 @@ func main() {
 		nil})
 
 	commander.Add(cmd.Command{
+		"timing",
+		`timing [true|false]`,
+		func(line string) (stop bool) {
+			if line != "" {
+				val, err := strconv.ParseBool(line)
+				if err != nil {
+					fmt.Println(err)
+					return
+				}
+
+				commander.Timing = val
+			}
+
+			fmt.Println("Timing", commander.Timing)
+			return
+		},
+		nil})
+
+	commander.Add(cmd.Command{
 		"agent",
 		`agent user-agent-string`,
 		func(line string) (stop bool) {
@@ -284,7 +279,7 @@ func main() {
 
 			if len(parts) == 2 {
 				client.Headers[name] = unquote(parts[1])
-				if !commander.GetBoolVar("print", true) {
+				if !commander.GetBoolVar("print") {
 					return
 				}
 			}
@@ -299,9 +294,9 @@ func main() {
                 head [url-path] [short-data]
                 `,
 		func(line string) (stop bool) {
-			res := request(client, "head", line, false)
+			res := request(commander, client, "head", line, false)
 			if res != nil {
-				printJson(res.Header)
+				json.PrintJson(res.Header)
 			}
 			return
 		},
@@ -312,7 +307,7 @@ func main() {
                 get [url-path] [short-data]
                 `,
 		func(line string) (stop bool) {
-			request(client, "get", line, commander.GetBoolVar("print", true))
+			request(commander, client, "get", line, commander.GetBoolVar("print"))
 			return
 		},
 		nil})
@@ -322,7 +317,7 @@ func main() {
                 post [url-path] [short-data]
                 `,
 		func(line string) (stop bool) {
-			request(client, "post", line, commander.GetBoolVar("print", true))
+			request(commander, client, "post", line, commander.GetBoolVar("print"))
 			return
 		},
 		nil})
@@ -332,7 +327,7 @@ func main() {
                 put [url-path] [short-data]
                 `,
 		func(line string) (stop bool) {
-			request(client, "put", line, commander.GetBoolVar("print", true))
+			request(commander, client, "put", line, commander.GetBoolVar("print"))
 			return
 		},
 		nil})
@@ -342,164 +337,8 @@ func main() {
                 delete [url-path] [short-data]
                 `,
 		func(line string) (stop bool) {
-			request(client, "delete", line, commander.GetBoolVar("print", true))
+			request(commander, client, "delete", line, commander.GetBoolVar("print"))
 			return
-		},
-		nil})
-
-	commander.Add(cmd.Command{"json",
-		`
-                json field1=value1 field2=value2...       // json object
-                json {"name1":"value1", "name2":"value2"}
-                json [value1 value2...]                   // json array
-                json [value1, value2...]
-                `,
-		func(line string) (stop bool) {
-			var res interface{}
-
-			if strings.HasPrefix(line, "{") { // assume is already a JSON object
-
-				if jbody, err := simplejson.LoadString(line); err != nil {
-					err = fmt.Errorf("error parsing object %q", line)
-					env["error"] = err.Error()
-					fmt.Println(err)
-					return
-				} else {
-					res = jbody.Data()
-				}
-			} else if strings.HasPrefix(line, "[") { // could be a JSON array
-
-				if jbody, err := simplejson.LoadString(line); err == nil {
-					res = jbody.Data()
-				} else { // try a sequence of values (that need to be parsed)
-					line = strings.TrimPrefix(line, "[")
-					line = strings.TrimSuffix(line, "]")
-					line = strings.TrimSpace(line)
-
-					var ares []interface{}
-
-					for _, f := range args.GetArgs(line) {
-						v, err := parseValue(f)
-						if err != nil {
-							fmt.Println(err)
-							env["error"] = err.Error()
-							return
-						}
-
-						ares = append(ares, v)
-					}
-
-					res = ares
-				}
-			} else { // a sequence of name=value pairs
-				var err error
-				mres := map[string]interface{}{}
-
-				for _, f := range args.GetArgs(line, args.InfieldBrackets()) {
-					matches := reFieldValue.FindStringSubmatch(f)
-					if len(matches) > 0 { // [field=value field =value value]
-						name, value := matches[1], matches[3]
-						mres[name], err = parseValue(value)
-
-						if err != nil {
-							fmt.Println(err)
-							env["error"] = err.Error()
-							return
-						}
-					} else {
-						fmt.Println("invalid name=value pair:", f)
-						env["error"] = "invalid name=value pair"
-						return
-					}
-				}
-
-				res = mres
-			}
-
-			if commander.GetBoolVar("print", true) {
-				printJson(res)
-			}
-
-			env["error"] = ""
-			env["json"] = unquote(simplejson.MustDumpString(res))
-			return
-		},
-		nil})
-
-	commander.Add(cmd.Command{
-		"jsonpath",
-		`jsonpath [-e] [-c] path {json}`,
-		func(line string) (stop bool) {
-			var joptions jsonpath.ProcessOptions
-
-			options, line := args.GetOptions(line)
-			for _, o := range options {
-				if o == "-e" || o == "--enhanced" {
-					joptions |= jsonpath.Enhanced
-				} else if o == "-c" || o == "--collapse" {
-					joptions |= jsonpath.Collapse
-				} else {
-					line = "" // to force an error
-					break
-				}
-			}
-
-			parts := args.GetArgsN(line, 2)
-			if len(parts) != 2 {
-				fmt.Println("use: jsonpath [-e|--enhanced] path {json}")
-				env["error"] = "invalid-usage"
-				return
-			}
-
-			path := parts[0]
-			if !strings.HasPrefix(path, "$.") {
-				path = "$." + path
-			}
-
-			jbody, err := simplejson.LoadString(parts[1])
-			if err != nil {
-				fmt.Println("json:", err)
-				env["error"] = err.Error()
-				return
-			}
-
-			jp := jsonpath.NewProcessor()
-			if !jp.Parse(path) {
-				env["error"] = fmt.Sprintf("failed to parse %q", path)
-				return // syntax error
-			}
-
-			res := jp.Process(jbody, joptions)
-			if commander.GetBoolVar("print", true) {
-				printJson(res)
-			}
-			env["error"] = ""
-			env["json"] = unquote(simplejson.MustDumpString(res))
-			return
-		},
-		nil})
-
-	commander.Add(cmd.Command{
-		"format",
-		`format object`,
-		func(line string) (stop bool) {
-			jbody, err := simplejson.LoadString(line)
-			if err != nil {
-				fmt.Println("json:", err)
-				env["error"] = err.Error()
-				return
-			}
-
-			printJson(jbody.Data())
-			return
-		},
-		nil})
-	commander.Add(cmd.Command{
-		"exit",
-		`exit script`,
-		func(line string) (stop bool) {
-			fmt.Println("goodbye!")
-			return true
 		},
 		nil})
 
