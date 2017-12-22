@@ -25,6 +25,8 @@ func request(cmd *cmd.Cmd, client *httpclient.HttpClient, method, params string,
 	cmd.SetVar("error", "", true)
 	cmd.SetVar("body", "", true)
 
+	// [-options...] "path" {body}
+
 	options := []httpclient.RequestOption{client.Method(method)}
 	args := args.ParseArgs(params)
 
@@ -129,6 +131,7 @@ func parseValue(v string) (interface{}, error) {
 
 func main() {
 	var interrupted bool
+	var logBody bool
 	var client = httpclient.NewHttpClient("")
 
 	client.UserAgent = "httpclient/0.1"
@@ -208,9 +211,14 @@ func main() {
 
 	commander.Add(cmd.Command{
 		"verbose",
-		`verbose [true|false]`,
+		`verbose [true|false|body]`,
 		func(line string) (stop bool) {
-			if line != "" {
+			if line == "body" {
+				if !logBody {
+					httpclient.StartLogging(true, true)
+					logBody = true
+				}
+			} else if line != "" {
 				val, err := strconv.ParseBool(line)
 				if err != nil {
 					fmt.Println(err)
@@ -218,9 +226,17 @@ func main() {
 				}
 
 				client.Verbose = val
+
+				if !val && logBody {
+					httpclient.StopLogging()
+					logBody = false
+				}
 			}
 
 			fmt.Println("Verbose", client.Verbose)
+			if logBody {
+				fmt.Println("Logging Request/Response body")
+			}
 			return
 		},
 		nil})
