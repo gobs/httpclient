@@ -8,6 +8,7 @@ import (
 	"net/http/httputil"
 	"os"
 	"strconv"
+	"time"
 )
 
 // A transport that prints request and response
@@ -16,6 +17,7 @@ type LoggingTransport struct {
 	t            *http.Transport
 	requestBody  bool
 	responseBody bool
+	timing       bool
 }
 
 func (lt *LoggingTransport) RoundTrip(req *http.Request) (resp *http.Response, err error) {
@@ -24,7 +26,19 @@ func (lt *LoggingTransport) RoundTrip(req *http.Request) (resp *http.Response, e
 	fmt.Println("REQUEST:", string(dreq))
 	fmt.Println("")
 
+	var startTime time.Time
+	var elapsed time.Duration
+
+	if lt.timing {
+		startTime = time.Now()
+	}
+
 	resp, err = lt.t.RoundTrip(req)
+
+	if lt.timing {
+		elapsed = time.Since(startTime)
+	}
+
 	if err != nil {
 		if lt.requestBody {
 			// don't print the body twice
@@ -35,6 +49,10 @@ func (lt *LoggingTransport) RoundTrip(req *http.Request) (resp *http.Response, e
 	if resp != nil {
 		dresp, _ := httputil.DumpResponse(resp, lt.responseBody)
 		fmt.Println("RESPONSE:", string(dresp))
+	}
+
+	if elapsed > 0 {
+		fmt.Println("ELAPSED TIME:", elapsed.Round(time.Millisecond))
 	}
 
 	fmt.Println("")
@@ -51,8 +69,9 @@ func (lt *LoggingTransport) CancelRequest(req *http.Request) {
 //
 // if requestBody == true, also log request body
 // if responseBody == true, also log response body
-func StartLogging(requestBody, responseBody bool) {
-	http.DefaultTransport = &LoggingTransport{&http.Transport{}, requestBody, responseBody}
+// if timing == true, also log elapsed time
+func StartLogging(requestBody, responseBody, timing bool) {
+	http.DefaultTransport = &LoggingTransport{&http.Transport{}, requestBody, responseBody, timing}
 }
 
 // Disable logging requests/responses
@@ -61,8 +80,8 @@ func StopLogging() {
 }
 
 // Wrap input transport into a LoggingTransport
-func LoggedTransport(t *http.Transport, requestBody, responseBody bool) http.RoundTripper {
-	return &LoggingTransport{t, requestBody, responseBody}
+func LoggedTransport(t *http.Transport, requestBody, responseBody, timing bool) http.RoundTripper {
+	return &LoggingTransport{t, requestBody, responseBody, timing}
 }
 
 // A Reader that "logs" progress

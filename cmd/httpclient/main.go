@@ -215,7 +215,7 @@ func main() {
 		func(line string) (stop bool) {
 			if line == "body" {
 				if !logBody {
-					httpclient.StartLogging(true, true)
+					httpclient.StartLogging(true, true, true)
 					logBody = true
 				}
 			} else if line != "" {

@@ -591,6 +591,15 @@ func (c *HttpClient) Header(headers map[string]string) RequestOption {
 	}
 }
 
+/*
+func (c *HttpClient) Close(close bool) RequestOption {
+	return func(req *http.Request) error {
+		req.Close = close
+		return nil
+	}
+}
+*/
+
 func (self *HttpClient) SendRequest(options ...RequestOption) (*HttpResponse, error) {
 	req, err := http.NewRequest("GET", self.BaseURL.String(), nil)
 	if err != nil {
