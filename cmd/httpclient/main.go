@@ -22,8 +22,8 @@ var (
 )
 
 func request(cmd *cmd.Cmd, client *httpclient.HttpClient, method, params string, print bool) *httpclient.HttpResponse {
-	cmd.SetVar("error", "", true)
-	cmd.SetVar("body", "", true)
+	cmd.SetVar("error", "")
+	cmd.SetVar("body", "")
 
 	// [-options...] "path" {body}
 
@@ -49,7 +49,7 @@ func request(cmd *cmd.Cmd, client *httpclient.HttpClient, method, params string,
 	}
 	if err != nil {
 		fmt.Println("ERROR:", err)
-		cmd.SetVar("error", err, true)
+		cmd.SetVar("error", err)
 	}
 
 	body := res.Content()
@@ -66,7 +66,7 @@ func request(cmd *cmd.Cmd, client *httpclient.HttpClient, method, params string,
 		}
 	}
 
-	cmd.SetVar("body", string(body), true)
+	cmd.SetVar("body", string(body))
 	return res
 }
 
@@ -143,8 +143,6 @@ func main() {
 	}
 
 	commander.Init(controlflow.Plugin, json.Plugin)
-
-	commander.SetVar("print", true, false)
 
 	commander.Add(cmd.Command{
 		"base",
