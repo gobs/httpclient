@@ -561,6 +561,13 @@ func (c *HttpClient) JsonBody(body interface{}) RequestOption {
 	}
 }
 
+func (c *HttpClient) Accept(ct string) RequestOption {
+	return func(req *http.Request) error {
+		req.Header.Set("Accept", ct)
+		return nil
+	}
+}
+
 func (c *HttpClient) ContentType(ct string) RequestOption {
 	return func(req *http.Request) error {
 		req.Header.Set("Content-Type", ct)
