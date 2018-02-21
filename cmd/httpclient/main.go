@@ -370,8 +370,18 @@ func main() {
 
 		commander.OneCmd(cmd)
 
+	case 3:
+		if os.Args[1] == "-script" || os.Args[1] == "--script" {
+			cmd := "@" + os.Args[2]
+			commander.OneCmd(cmd)
+		} else {
+			fmt.Println("usage:", os.Args[0], "[{base-url} | @{script-file} | -script {script-file}]")
+		}
+
+		return
+
 	default:
-		fmt.Println("usage:", os.Args[0], "[base-url]")
+		fmt.Println("usage:", os.Args[0], "[{base-url} | @{script-file} | -script {script-file}]")
 		return
 	}
 
