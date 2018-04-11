@@ -8,6 +8,7 @@ import (
 	"github.com/gobs/httpclient"
 	"github.com/gobs/simplejson"
 
+	"encoding/base64"
 	"fmt"
 	"net/url"
 	"os"
@@ -352,6 +353,27 @@ func main() {
                 `,
 		func(line string) (stop bool) {
 			request(commander, client, "delete", line, commander.GetBoolVar("print"))
+			return
+		},
+		nil})
+
+	commander.Add(cmd.Command{"jwt",
+		`
+                jwt token
+                `,
+		func(line string) (stop bool) {
+			parts := strings.Split(line, ".")
+			if len(parts) != 3 {
+				fmt.Println("not a JWT token")
+			}
+
+			decoded, err := base64.RawStdEncoding.DecodeString(parts[1])
+			if err != nil {
+				fmt.Println(err)
+			} else {
+				fmt.Println(string(decoded))
+				commander.SetVar("body", string(decoded))
+			}
 			return
 		},
 		nil})
