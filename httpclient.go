@@ -477,9 +477,12 @@ func (self *HttpClient) Request(method string, urlpath string, body io.Reader, h
 }
 
 ////////////////////////////////////////////////////////////////////////////////////
+//
+// New style requests, with functional options
 
 type RequestOption func(req *http.Request) (*http.Request, error)
 
+// Set the request method
 func (c *HttpClient) Method(m string) RequestOption {
 	return func(req *http.Request) (*http.Request, error) {
 		req.Method = strings.ToUpper(m)
@@ -487,6 +490,7 @@ func (c *HttpClient) Method(m string) RequestOption {
 	}
 }
 
+// set the request URL
 func (c *HttpClient) URL(u *url.URL) RequestOption {
 	return func(req *http.Request) (*http.Request, error) {
 		req.URL = u
@@ -494,6 +498,7 @@ func (c *HttpClient) URL(u *url.URL) RequestOption {
 	}
 }
 
+// set the request path
 func (c *HttpClient) Path(path string) RequestOption {
 	return func(req *http.Request) (*http.Request, error) {
 		u, err := c.BaseURL.Parse(path)
@@ -506,6 +511,7 @@ func (c *HttpClient) Path(path string) RequestOption {
 	}
 }
 
+// set the request URL parameters
 func (c *HttpClient) Params(params map[string]interface{}) RequestOption {
 	return func(req *http.Request) (*http.Request, error) {
 		u := req.URL.String()
@@ -514,6 +520,7 @@ func (c *HttpClient) Params(params map[string]interface{}) RequestOption {
 	}
 }
 
+// set the request URL parameters
 func (c *HttpClient) StringParams(params map[string]string) RequestOption {
 	return func(req *http.Request) (*http.Request, error) {
 		q := req.URL.Query()
@@ -525,6 +532,7 @@ func (c *HttpClient) StringParams(params map[string]string) RequestOption {
 	}
 }
 
+// set the request body as an io.Reader
 func (c *HttpClient) Body(r io.Reader) RequestOption {
 	return func(req *http.Request) (*http.Request, error) {
 		if r == nil {
@@ -550,6 +558,7 @@ func (c *HttpClient) Body(r io.Reader) RequestOption {
 	}
 }
 
+// set the request body as a JSON object
 func (c *HttpClient) JsonBody(body interface{}) RequestOption {
 	return func(req *http.Request) (*http.Request, error) {
 		b, err := simplejson.DumpBytes(body)
@@ -563,6 +572,7 @@ func (c *HttpClient) JsonBody(body interface{}) RequestOption {
 	}
 }
 
+// set the Accept header
 func (c *HttpClient) Accept(ct string) RequestOption {
 	return func(req *http.Request) (*http.Request, error) {
 		req.Header.Set("Accept", ct)
@@ -570,6 +580,7 @@ func (c *HttpClient) Accept(ct string) RequestOption {
 	}
 }
 
+// set the Content-Type header
 func (c *HttpClient) ContentType(ct string) RequestOption {
 	return func(req *http.Request) (*http.Request, error) {
 		req.Header.Set("Content-Type", ct)
@@ -577,6 +588,7 @@ func (c *HttpClient) ContentType(ct string) RequestOption {
 	}
 }
 
+// set the Content-Length header
 func (c *HttpClient) ContentLength(l int64) RequestOption {
 	return func(req *http.Request) (*http.Request, error) {
 		req.ContentLength = l
@@ -584,6 +596,7 @@ func (c *HttpClient) ContentLength(l int64) RequestOption {
 	}
 }
 
+// set specified HTTP headers
 func (c *HttpClient) Header(headers map[string]string) RequestOption {
 	return func(req *http.Request) (*http.Request, error) {
 		for k, v := range headers {
@@ -600,12 +613,14 @@ func (c *HttpClient) Header(headers map[string]string) RequestOption {
 	}
 }
 
+// set request context
 func (c *HttpClient) Context(ctx context.Context) RequestOption {
 	return func(req *http.Request) (*http.Request, error) {
 		return req.WithContext(ctx), nil
 	}
 }
 
+// set request ClientTrace
 func (c *HttpClient) Trace(tracer *httptrace.ClientTrace) RequestOption {
 	return func(req *http.Request) (*http.Request, error) {
 		return req.WithContext(httptrace.WithClientTrace(req.Context(), tracer)), nil
@@ -621,6 +636,7 @@ func (c *HttpClient) Close(close bool) RequestOption {
 }
 */
 
+// Execute request
 func (self *HttpClient) SendRequest(options ...RequestOption) (*HttpResponse, error) {
 	req, err := http.NewRequest("GET", self.BaseURL.String(), nil)
 	if err != nil {
@@ -642,6 +658,8 @@ func (self *HttpClient) SendRequest(options ...RequestOption) (*HttpResponse, er
 }
 
 ////////////////////////////////////////////////////////////////////////////////////
+//
+// Old style requests
 
 //
 // Execute request
