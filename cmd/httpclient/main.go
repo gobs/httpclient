@@ -29,7 +29,7 @@ func request(cmd *cmd.Cmd, client *httpclient.HttpClient, method, params string,
 	// [-options...] "path" {body}
 
 	options := []httpclient.RequestOption{client.Method(method)}
-	args := args.ParseArgs(params)
+	args := args.ParseArgs(params, args.InfieldBrackets())
 
 	if len(args.Arguments) > 0 {
 		options = append(options, client.Path(args.Arguments[0]))
@@ -390,7 +390,9 @@ func main() {
 			cmd = "base " + cmd
 		}
 
-		commander.OneCmd(cmd)
+		if commander.OneCmd(cmd) {
+                        return
+                }
 
 	case 3:
 		if os.Args[1] == "-script" || os.Args[1] == "--script" {
