@@ -2,6 +2,7 @@ package httpclient
 
 import (
 	"bytes"
+	"context"
 	"crypto/tls"
 	"errors"
 	"fmt"
@@ -11,6 +12,7 @@ import (
 	"mime/multipart"
 	"net"
 	"net/http"
+	"net/http/httptrace"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -476,59 +478,59 @@ func (self *HttpClient) Request(method string, urlpath string, body io.Reader, h
 
 ////////////////////////////////////////////////////////////////////////////////////
 
-type RequestOption func(req *http.Request) error
+type RequestOption func(req *http.Request) (*http.Request, error)
 
 func (c *HttpClient) Method(m string) RequestOption {
-	return func(req *http.Request) error {
+	return func(req *http.Request) (*http.Request, error) {
 		req.Method = strings.ToUpper(m)
-		return nil
+		return req, nil
 	}
 }
 
 func (c *HttpClient) URL(u *url.URL) RequestOption {
-	return func(req *http.Request) error {
+	return func(req *http.Request) (*http.Request, error) {
 		req.URL = u
-		return nil
+		return req, nil
 	}
 }
 
 func (c *HttpClient) Path(path string) RequestOption {
-	return func(req *http.Request) error {
+	return func(req *http.Request) (*http.Request, error) {
 		u, err := c.BaseURL.Parse(path)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		req.URL = u
-		return nil
+		return req, nil
 	}
 }
 
 func (c *HttpClient) Params(params map[string]interface{}) RequestOption {
-	return func(req *http.Request) error {
+	return func(req *http.Request) (*http.Request, error) {
 		u := req.URL.String()
 		req.URL = URLWithParams(u, params)
-		return nil
+		return req, nil
 	}
 }
 
 func (c *HttpClient) StringParams(params map[string]string) RequestOption {
-	return func(req *http.Request) error {
+	return func(req *http.Request) (*http.Request, error) {
 		q := req.URL.Query()
 		for k, v := range params {
 			q.Set(k, v)
 		}
 		req.URL.RawQuery = q.Encode()
-		return nil
+		return req, nil
 	}
 }
 
 func (c *HttpClient) Body(r io.Reader) RequestOption {
-	return func(req *http.Request) error {
+	return func(req *http.Request) (*http.Request, error) {
 		if r == nil {
 			req.Body = http.NoBody
 			req.ContentLength = 0
-			return nil
+			return req, nil
 		}
 
 		rc, ok := r.(io.ReadCloser)
@@ -544,46 +546,46 @@ func (c *HttpClient) Body(r io.Reader) RequestOption {
 			req.ContentLength = int64(v.Len())
 		}
 
-		return nil
+		return req, nil
 	}
 }
 
 func (c *HttpClient) JsonBody(body interface{}) RequestOption {
-	return func(req *http.Request) error {
+	return func(req *http.Request) (*http.Request, error) {
 		b, err := simplejson.DumpBytes(body)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		req.Body = ioutil.NopCloser(bytes.NewBuffer(b))
 		req.ContentLength = int64(len(b))
 		req.Header.Set("Content-Type", "application/json; charset=utf-8")
-		return nil
+		return req, nil
 	}
 }
 
 func (c *HttpClient) Accept(ct string) RequestOption {
-	return func(req *http.Request) error {
+	return func(req *http.Request) (*http.Request, error) {
 		req.Header.Set("Accept", ct)
-		return nil
+		return req, nil
 	}
 }
 
 func (c *HttpClient) ContentType(ct string) RequestOption {
-	return func(req *http.Request) error {
+	return func(req *http.Request) (*http.Request, error) {
 		req.Header.Set("Content-Type", ct)
-		return nil
+		return req, nil
 	}
 }
 
 func (c *HttpClient) ContentLength(l int64) RequestOption {
-	return func(req *http.Request) error {
+	return func(req *http.Request) (*http.Request, error) {
 		req.ContentLength = l
-		return nil
+		return req, nil
 	}
 }
 
 func (c *HttpClient) Header(headers map[string]string) RequestOption {
-	return func(req *http.Request) error {
+	return func(req *http.Request) (*http.Request, error) {
 		for k, v := range headers {
 			if strings.ToLower(k) == "content-length" {
 				if len, err := strconv.Atoi(v); err == nil && req.ContentLength <= 0 {
@@ -594,7 +596,19 @@ func (c *HttpClient) Header(headers map[string]string) RequestOption {
 			}
 		}
 
-		return nil
+		return req, nil
+	}
+}
+
+func (c *HttpClient) Context(ctx context.Context) RequestOption {
+	return func(req *http.Request) (*http.Request, error) {
+		return req.WithContext(ctx), nil
+	}
+}
+
+func (c *HttpClient) Trace(tracer *httptrace.ClientTrace) RequestOption {
+	return func(req *http.Request) (*http.Request, error) {
+		return req.WithContext(httptrace.WithClientTrace(req.Context(), tracer)), nil
 	}
 }
 
@@ -619,7 +633,7 @@ func (self *HttpClient) SendRequest(options ...RequestOption) (*HttpResponse, er
 	self.addHeaders(req, nil)
 
 	for _, opt := range options {
-		if err = opt(req); err != nil {
+		if req, err = opt(req); err != nil {
 			return nil, err
 		}
 	}
