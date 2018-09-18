@@ -22,13 +22,21 @@ var (
 	reFieldValue = regexp.MustCompile(`(\w[\d\w-]*)(=(.*))?`) // field-name=value
 )
 
-func request(cmd *cmd.Cmd, client *httpclient.HttpClient, method, params string, print bool) *httpclient.HttpResponse {
+func request(cmd *cmd.Cmd, client *httpclient.HttpClient, method, params string, print, trace bool) *httpclient.HttpResponse {
 	cmd.SetVar("error", "")
 	cmd.SetVar("body", "")
 
 	// [-options...] "path" {body}
 
 	options := []httpclient.RequestOption{client.Method(method)}
+
+	var rtrace *httpclient.RequestTrace
+
+	if trace {
+		rtrace = &httpclient.RequestTrace{}
+		options = append(options, client.Trace(rtrace.NewClientTrace(true)))
+	}
+
 	args := args.ParseArgs(params, args.InfieldBrackets())
 
 	if len(args.Arguments) > 0 {
@@ -68,6 +76,10 @@ func request(cmd *cmd.Cmd, client *httpclient.HttpClient, method, params string,
 	}
 
 	cmd.SetVar("body", string(body))
+	if rtrace != nil {
+		cmd.SetVar("rtrace", simplejson.MustDumpString(rtrace))
+	}
+
 	return res
 }
 
@@ -309,7 +321,7 @@ func main() {
                 head [url-path] [short-data]
                 `,
 		func(line string) (stop bool) {
-			res := request(commander, client, "head", line, false)
+			res := request(commander, client, "head", line, false, commander.GetBoolVar("trace"))
 			if res != nil {
 				json.PrintJson(res.Header)
 			}
@@ -322,7 +334,7 @@ func main() {
                 get [url-path] [short-data]
                 `,
 		func(line string) (stop bool) {
-			request(commander, client, "get", line, commander.GetBoolVar("print"))
+			request(commander, client, "get", line, commander.GetBoolVar("print"), commander.GetBoolVar("trace"))
 			return
 		},
 		nil})
@@ -332,7 +344,7 @@ func main() {
                 post [url-path] [short-data]
                 `,
 		func(line string) (stop bool) {
-			request(commander, client, "post", line, commander.GetBoolVar("print"))
+			request(commander, client, "post", line, commander.GetBoolVar("print"), commander.GetBoolVar("trace"))
 			return
 		},
 		nil})
@@ -342,7 +354,7 @@ func main() {
                 put [url-path] [short-data]
                 `,
 		func(line string) (stop bool) {
-			request(commander, client, "put", line, commander.GetBoolVar("print"))
+			request(commander, client, "put", line, commander.GetBoolVar("print"), commander.GetBoolVar("trace"))
 			return
 		},
 		nil})
@@ -352,7 +364,7 @@ func main() {
                 delete [url-path] [short-data]
                 `,
 		func(line string) (stop bool) {
-			request(commander, client, "delete", line, commander.GetBoolVar("print"))
+			request(commander, client, "delete", line, commander.GetBoolVar("print"), commander.GetBoolVar("trace"))
 			return
 		},
 		nil})
@@ -391,8 +403,8 @@ func main() {
 		}
 
 		if commander.OneCmd(cmd) {
-                        return
-                }
+			return
+		}
 
 	case 3:
 		if os.Args[1] == "-script" || os.Args[1] == "--script" {

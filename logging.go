@@ -1,10 +1,12 @@
 package httpclient
 
 import (
+	"crypto/tls"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
+	"net/http/httptrace"
 	"net/http/httputil"
 	"os"
 	"strconv"
@@ -130,6 +132,8 @@ func (p *ProgressReader) Close() error {
 	}
 }
 
+// A Logger that can be disabled
+
 type DebugLog bool
 
 func (d DebugLog) Println(args ...interface{}) {
@@ -142,4 +146,115 @@ func (d DebugLog) Printf(fmt string, args ...interface{}) {
 	if d {
 		log.Printf(fmt, args...)
 	}
+}
+
+// A ClientTrace implementation that collects request time
+
+type RequestTrace struct {
+	DNS          time.Duration
+	Connect      time.Duration
+	Connected    bool
+	TLSHandshake time.Duration
+	Request      time.Duration
+	Wait         time.Duration
+
+	startTime time.Time
+}
+
+func (r *RequestTrace) NewClientTrace(trace bool) *httptrace.ClientTrace {
+	return &httptrace.ClientTrace{
+		GotConn: func(info httptrace.GotConnInfo) {
+			r.Connected = info.WasIdle
+
+			if trace {
+				log.Println("GotConn", info.Conn.RemoteAddr(), "reused:", info.Reused, "wasIdle:", info.WasIdle)
+			}
+		},
+
+		ConnectStart: func(network, addr string) {
+			r.startTime = time.Now()
+
+			if trace {
+				log.Println("ConnectStart", network, addr)
+			}
+		},
+
+		ConnectDone: func(network, addr string, err error) {
+			r.Connect = time.Since(r.startTime)
+			r.startTime = time.Time{}
+
+			if trace {
+				log.Println("ConnectDone", network, addr, err)
+			}
+		},
+
+		DNSStart: func(info httptrace.DNSStartInfo) {
+			r.startTime = time.Now()
+
+			if trace {
+				log.Println("DNSStart", info.Host)
+			}
+		},
+
+		DNSDone: func(info httptrace.DNSDoneInfo) {
+			r.DNS = time.Since(r.startTime)
+			r.startTime = time.Time{}
+
+			if trace {
+				log.Println("DNSDone", info.Addrs)
+			}
+		},
+
+		TLSHandshakeStart: func() {
+			r.startTime = time.Now()
+
+			if trace {
+				log.Println("TLSHandshakeStart")
+			}
+		},
+
+		TLSHandshakeDone: func(state tls.ConnectionState, err error) {
+			r.TLSHandshake = time.Since(r.startTime)
+			r.startTime = time.Time{}
+
+			if trace {
+				log.Println("TLSHandshakeDone", err)
+			}
+		},
+
+		WroteHeaderField: func(string, []string) {
+			if r.startTime.IsZero() {
+				r.startTime = time.Now()
+
+				if trace {
+					log.Println("WroteHeader")
+				}
+			}
+		},
+
+		WroteRequest: func(info httptrace.WroteRequestInfo) {
+			r.Request = time.Since(r.startTime)
+			r.startTime = time.Now()
+
+			if trace {
+				log.Println("WroteRequest")
+			}
+		},
+
+		GotFirstResponseByte: func() {
+			r.Wait = time.Since(r.startTime)
+			r.startTime = time.Now()
+
+			if trace {
+				log.Println("GotFirstResponseByte")
+			}
+		},
+	}
+}
+
+// If called after the response has been received this should return
+// the time spent downloading the data (since GotFirstResponseByte)
+
+func (r *RequestTrace) Elapsed() time.Duration {
+	return time.Since(r.startTime)
 }
