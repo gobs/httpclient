@@ -169,6 +169,7 @@ func (r *RequestTrace) Reset() {
 	r.TLSHandshake = 0
 	r.Request = 0
 	r.Wait = 0
+	r.Response = 0
 }
 
 func (r *RequestTrace) NewClientTrace(trace bool) *httptrace.ClientTrace {
