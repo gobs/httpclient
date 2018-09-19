@@ -161,6 +161,15 @@ type RequestTrace struct {
 	startTime time.Time
 }
 
+func (r *RequestTrace) Reset() {
+	r.DNS = 0
+	r.Connect = 0
+	r.Connected = false
+	r.TLSHandshake = 0
+	r.Request = 0
+	r.Wait = 0
+}
+
 func (r *RequestTrace) NewClientTrace(trace bool) *httptrace.ClientTrace {
 	return &httptrace.ClientTrace{
 		GotConn: func(info httptrace.GotConnInfo) {
