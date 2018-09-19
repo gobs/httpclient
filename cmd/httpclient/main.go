@@ -53,6 +53,9 @@ func request(cmd *cmd.Cmd, client *httpclient.HttpClient, method, params string,
 	}
 
 	res, err := client.SendRequest(options...)
+        if rtrace != nil {
+            rtrace.Done()
+        }
 	if err == nil {
 		err = res.ResponseError()
 	}

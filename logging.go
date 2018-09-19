@@ -157,6 +157,7 @@ type RequestTrace struct {
 	TLSHandshake time.Duration
 	Request      time.Duration
 	Wait         time.Duration
+	Response     time.Duration
 
 	startTime time.Time
 }
@@ -261,9 +262,10 @@ func (r *RequestTrace) NewClientTrace(trace bool) *httptrace.ClientTrace {
 	}
 }
 
-// If called after the response has been received this should return
-// the time spent downloading the data (since GotFirstResponseByte)
+// Call this after the response has been received to set the Response duration
+// (there is no callback for this)
 
-func (r *RequestTrace) Elapsed() time.Duration {
-	return time.Since(r.startTime)
+func (r *RequestTrace) Done() {
+	r.Response = time.Since(r.startTime)
+	r.startTime = time.Now()
 }
