@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -259,6 +260,15 @@ func (resp *HttpResponse) Content() []byte {
 func (resp *HttpResponse) Json() (json *simplejson.Json) {
 	json, _ = simplejson.LoadBytes(resp.Content())
 	return
+}
+
+//
+// JsonDecode decodes the response body as JSON into specified structure
+//
+func (resp *HttpResponse) JsonDecode(out interface{}) error {
+	dec := json.NewDecoder(resp.Body)
+	defer resp.Body.Close()
+	return dec.Decode(out)
 }
 
 ////////////////////////////////////////////////////////////////////////
