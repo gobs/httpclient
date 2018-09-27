@@ -565,7 +565,7 @@ func (c *HttpClient) Params(params map[string]interface{}) RequestOption {
 }
 
 // set the request URL parameters
-func (c *HttpClient) StringParams(params map[string]string) RequestOption {
+func StringParams(params map[string]string) RequestOption {
 	return func(req *http.Request) (*http.Request, error) {
 		q := req.URL.Query()
 		for k, v := range params {
@@ -576,7 +576,7 @@ func (c *HttpClient) StringParams(params map[string]string) RequestOption {
 	}
 }
 
-func StringParams(params map[string]string) RequestOption {
+func (c *HttpClient) StringParams(params map[string]string) RequestOption {
 	return StringParams(params)
 }
 
@@ -589,17 +589,16 @@ func Body(r io.Reader) RequestOption {
 			return req, nil
 		}
 
-		rc, ok := r.(io.ReadCloser)
-		if !ok {
-			rc = ioutil.NopCloser(r)
+		if rc, ok := r.(io.ReadCloser); ok {
+			req.Body = rc
+		} else {
+			req.Body = ioutil.NopCloser(r)
 		}
 
-		req.Body = rc
-
-		if v, ok := r.(interface {
-			Len() int
-		}); ok {
+		if v, ok := r.(interface{ Len() int }); ok {
 			req.ContentLength = int64(v.Len())
+		} else if v, ok := r.(interface{ Size() int64 }); ok {
+			req.ContentLength = v.Size()
 		}
 
 		return req, nil
