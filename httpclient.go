@@ -265,8 +265,11 @@ func (resp *HttpResponse) Json() (json *simplejson.Json) {
 //
 // JsonDecode decodes the response body as JSON into specified structure
 //
-func (resp *HttpResponse) JsonDecode(out interface{}) error {
+func (resp *HttpResponse) JsonDecode(out interface{}, strict bool) error {
 	dec := json.NewDecoder(resp.Body)
+	if strict {
+		dec.DisallowUnknownFields()
+	}
 	defer resp.Body.Close()
 	return dec.Decode(out)
 }
@@ -514,6 +517,19 @@ func URL(u *url.URL) RequestOption {
 
 func (c *HttpClient) URL(u *url.URL) RequestOption {
 	return URL(u)
+}
+
+// set the request URL (passed as string)
+func URLString(ustring string) RequestOption {
+	return func(req *http.Request) (*http.Request, error) {
+		u, err := url.Parse(ustring)
+		if err != nil {
+			return nil, err
+		}
+
+		req.URL = u
+		return req, nil
+	}
 }
 
 // set the request path
