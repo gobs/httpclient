@@ -26,6 +26,11 @@ func (lt *LoggingTransport) RoundTrip(req *http.Request) (resp *http.Response, e
 	dreq, _ := httputil.DumpRequest(req, lt.requestBody)
 	//fmt.Println("REQUEST:", strconv.Quote(string(dreq)))
 	fmt.Println("REQUEST:", string(dreq))
+
+	for _, t := range req.TransferEncoding {
+		fmt.Println("Transfer-Encoding:", t)
+	}
+
 	fmt.Println("")
 
 	var startTime time.Time
@@ -51,6 +56,10 @@ func (lt *LoggingTransport) RoundTrip(req *http.Request) (resp *http.Response, e
 	if resp != nil {
 		dresp, _ := httputil.DumpResponse(resp, lt.responseBody)
 		fmt.Println("RESPONSE:", string(dresp))
+
+		for _, t := range resp.Request.TransferEncoding {
+			fmt.Println("RQ Transfer-Encoding:", t)
+		}
 	}
 
 	if elapsed > 0 {
@@ -195,7 +204,7 @@ func (r *RequestTrace) NewClientTrace(trace bool) *httptrace.ClientTrace {
 			r.startTime = time.Time{}
 
 			if trace {
-				log.Println("ConnectDone", network, addr, err)
+				log.Println("ConnectDone", network, addr, err, r.Connect)
 			}
 		},
 
@@ -212,7 +221,7 @@ func (r *RequestTrace) NewClientTrace(trace bool) *httptrace.ClientTrace {
 			r.startTime = time.Time{}
 
 			if trace {
-				log.Println("DNSDone", info.Addrs)
+				log.Println("DNSDone", info.Addrs, r.DNS)
 			}
 		},
 
@@ -229,7 +238,7 @@ func (r *RequestTrace) NewClientTrace(trace bool) *httptrace.ClientTrace {
 			r.startTime = time.Time{}
 
 			if trace {
-				log.Println("TLSHandshakeDone", err)
+				log.Println("TLSHandshakeDone", err, r.TLSHandshake)
 			}
 		},
 
@@ -248,7 +257,7 @@ func (r *RequestTrace) NewClientTrace(trace bool) *httptrace.ClientTrace {
 			r.startTime = time.Now()
 
 			if trace {
-				log.Println("WroteRequest")
+				log.Println("WroteRequest", r.Request)
 			}
 		},
 
@@ -257,7 +266,7 @@ func (r *RequestTrace) NewClientTrace(trace bool) *httptrace.ClientTrace {
 			r.startTime = time.Now()
 
 			if trace {
-				log.Println("GotFirstResponseByte")
+				log.Println("GotFirstResponseByte", r.Wait)
 			}
 		},
 	}
