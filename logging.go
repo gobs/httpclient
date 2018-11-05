@@ -279,3 +279,8 @@ func (r *RequestTrace) Done() {
 	r.Response = time.Since(r.startTime)
 	r.startTime = time.Now()
 }
+
+func (r *RequestTrace) String() string {
+	return fmt.Sprintf("{DNS:%v, Connect:%v, Connected:%v, TLSHandshake:%v, Request:%v, Wait:%v, Response:%v}",
+		r.DNS, r.Connect, r.Connected, r.TLSHandshake, r.Request, r.Wait, r.Response)
+}
