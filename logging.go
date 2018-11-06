@@ -282,5 +282,11 @@ func (r *RequestTrace) Done() {
 
 func (r *RequestTrace) String() string {
 	return fmt.Sprintf("{DNS:%v, Connect:%v, Connected:%v, TLSHandshake:%v, Request:%v, Wait:%v, Response:%v}",
-		r.DNS, r.Connect, r.Connected, r.TLSHandshake, r.Request, r.Wait, r.Response)
+		r.DNS.Truncate(100 * time.Microsecond),
+                r.Connect.Truncate(100 * time.Microsecond),
+                r.Connected,
+                r.TLSHandshake.Truncate(100 * time.Microsecond),
+                r.Request.Truncate(100 * time.Microsecond),
+                r.Wait.Truncate(100 * time.Microsecond),
+                r.Response.Truncate(100 * time.Microsecond))
 }
