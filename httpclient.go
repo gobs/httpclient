@@ -66,6 +66,7 @@ type HttpError struct {
 	Message    string
 	RetryAfter int
 	Body       []byte
+	Header     http.Header
 }
 
 func (e HttpError) Error() string {
@@ -135,7 +136,7 @@ func (r *HttpResponse) ResponseError() error {
 			rt, _ = strconv.Atoi(h)
 		}
 
-		return HttpError{Code: r.StatusCode, Message: "HTTP " + r.Status, RetryAfter: rt}
+		return HttpError{Code: r.StatusCode, Message: "HTTP " + r.Status, RetryAfter: rt, Header: r.Header}
 	}
 
 	return nil

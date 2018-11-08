@@ -159,6 +159,7 @@ func TestRetryAfter(test *testing.T) {
 	}}
 
 	response.Header.Set("Retry-After", "42")
+	response.Header.Set("X-Extended-Error", "Retry")
 
 	err := response.ResponseError()
 	test.Logf("%v\n", err)
@@ -175,6 +176,8 @@ func TestRetryAfter(test *testing.T) {
 	if herr.RetryAfter == 0 {
 		test.Fail()
 	}
+
+	test.Log(herr.Header)
 }
 
 func TestSendRequestGet(test *testing.T) {
