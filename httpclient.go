@@ -136,7 +136,19 @@ func (r *HttpResponse) ResponseError() error {
 			rt, _ = strconv.Atoi(h)
 		}
 
-		return HttpError{Code: r.StatusCode, Message: "HTTP " + r.Status, RetryAfter: rt, Header: r.Header}
+		var body [100]byte
+		var blen int
+
+		if r.Body != nil {
+			blen, _ = r.Body.Read(body[:])
+		}
+
+		return HttpError{Code: r.StatusCode,
+			Message:    "HTTP " + r.Status,
+			RetryAfter: rt,
+			Header:     r.Header,
+			Body:       body[:blen],
+		}
 	}
 
 	return nil
@@ -329,6 +341,19 @@ func NewHttpClient(base string) (httpClient *HttpClient) {
 	}
 
 	return
+}
+
+// Set Base
+//
+//
+func (self *HttpClient) SetBase(base string) error {
+	u, err := url.Parse(base)
+	if err != nil {
+		return err
+	}
+
+	self.BaseURL = u
+	return nil
 }
 
 //
