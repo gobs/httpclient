@@ -136,7 +136,7 @@ func (r *HttpResponse) ResponseError() error {
 			rt, _ = strconv.Atoi(h)
 		}
 
-		var body [100]byte
+		var body [256]byte
 		var blen int
 
 		if r.Body != nil {
