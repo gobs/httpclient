@@ -28,13 +28,13 @@ func request(cmd *cmd.Cmd, client *httpclient.HttpClient, method, params string,
 
 	// [-options...] "path" {body}
 
-	options := []httpclient.RequestOption{client.Method(method)}
+	options := []httpclient.RequestOption{httpclient.Method(method)}
 
 	var rtrace *httpclient.RequestTrace
 
 	if trace {
 		rtrace = &httpclient.RequestTrace{}
-		options = append(options, client.Trace(rtrace.NewClientTrace(true)))
+		options = append(options, httpclient.Trace(rtrace.NewClientTrace(true)))
 	}
 
 	args := args.ParseArgs(params, args.InfieldBrackets())
@@ -45,11 +45,11 @@ func request(cmd *cmd.Cmd, client *httpclient.HttpClient, method, params string,
 
 	if len(args.Arguments) > 1 {
 		data := strings.Join(args.Arguments[1:], " ")
-		options = append(options, client.Body(strings.NewReader(data)))
+		options = append(options, httpclient.Body(strings.NewReader(data)))
 	}
 
 	if len(args.Options) > 0 {
-		options = append(options, client.StringParams(args.Options))
+		options = append(options, httpclient.StringParams(args.Options))
 	}
 
 	res, err := client.SendRequest(options...)

@@ -529,20 +529,12 @@ func Method(m string) RequestOption {
 	}
 }
 
-func (c *HttpClient) Method(m string) RequestOption {
-	return Method(m)
-}
-
 // set the request URL
 func URL(u *url.URL) RequestOption {
 	return func(req *http.Request) (*http.Request, error) {
 		req.URL = u
 		return req, nil
 	}
-}
-
-func (c *HttpClient) URL(u *url.URL) RequestOption {
-	return URL(u)
 }
 
 // set the request URL (passed as string)
@@ -602,10 +594,6 @@ func Params(params map[string]interface{}) RequestOption {
 	}
 }
 
-func (c *HttpClient) Params(params map[string]interface{}) RequestOption {
-	return Params(params)
-}
-
 // set the request URL parameters
 func StringParams(params map[string]string) RequestOption {
 	return func(req *http.Request) (*http.Request, error) {
@@ -616,10 +604,6 @@ func StringParams(params map[string]string) RequestOption {
 		req.URL.RawQuery = q.Encode()
 		return req, nil
 	}
-}
-
-func (c *HttpClient) StringParams(params map[string]string) RequestOption {
-	return StringParams(params)
 }
 
 // set the request body as an io.Reader
@@ -647,12 +631,8 @@ func Body(r io.Reader) RequestOption {
 	}
 }
 
-func (c *HttpClient) Body(r io.Reader) RequestOption {
-	return Body(r)
-}
-
 // set the request body as a JSON object
-func (c *HttpClient) JsonBody(body interface{}) RequestOption {
+func JsonBody(body interface{}) RequestOption {
 	return func(req *http.Request) (*http.Request, error) {
 		b, err := simplejson.DumpBytes(body)
 		if err != nil {
@@ -673,20 +653,12 @@ func Accept(ct string) RequestOption {
 	}
 }
 
-func (c *HttpClient) Accept(ct string) RequestOption {
-	return Accept(ct)
-}
-
 // set the Content-Type header
 func ContentType(ct string) RequestOption {
 	return func(req *http.Request) (*http.Request, error) {
 		req.Header.Set("Content-Type", ct)
 		return req, nil
 	}
-}
-
-func (c *HttpClient) ContentType(ct string) RequestOption {
-	return ContentType(ct)
 }
 
 // set the Content-Length header
@@ -697,10 +669,6 @@ func ContentLength(l int64) RequestOption {
 		}
 		return req, nil
 	}
-}
-
-func (c *HttpClient) ContentLength(l int64) RequestOption {
-	return ContentLength(l)
 }
 
 // set specified HTTP headers
@@ -720,19 +688,11 @@ func Header(headers map[string]string) RequestOption {
 	}
 }
 
-func (c *HttpClient) Header(headers map[string]string) RequestOption {
-	return Header(headers)
-}
-
 // set request context
 func Context(ctx context.Context) RequestOption {
 	return func(req *http.Request) (*http.Request, error) {
 		return req.WithContext(ctx), nil
 	}
-}
-
-func (c *HttpClient) Context(ctx context.Context) RequestOption {
-	return Context(ctx)
 }
 
 // set request ClientTrace
@@ -742,22 +702,12 @@ func Trace(tracer *httptrace.ClientTrace) RequestOption {
 	}
 }
 
-func (c *HttpClient) Trace(tracer *httptrace.ClientTrace) RequestOption {
-	return Trace(tracer)
-}
-
-/*
-func Close(close bool) RequestOption {
+/* func Close(close bool) RequestOption {
 	return func(req *http.Request) error {
 		req.Close = close
 		return nil
 	}
-}
-
-func (c *HttpClient) Close(close bool) RequestOption {
-    return Close(close)
-}
-*/
+} */
 
 // Execute request
 func (self *HttpClient) SendRequest(options ...RequestOption) (*HttpResponse, error) {
