@@ -24,8 +24,6 @@ import (
 
 	"github.com/gobs/pretty"
 	"github.com/gobs/simplejson"
-
-	"github.com/jbenet/go-reuseport"
 )
 
 var (
@@ -416,12 +414,11 @@ func (self *HttpClient) SetLocalAddr(addr string) {
 		return
 	}
 	if tcpaddr, err := net.ResolveTCPAddr("tcp", addr); err == nil {
-		dialer := &reuseport.Dialer{
-			D: net.Dialer{
-				Timeout:   30 * time.Second, // defaults from net/http DefaultTransport
-				KeepAlive: 30 * time.Second, // defaults from net/http DefaultTransport
-				LocalAddr: tcpaddr,
-			}}
+		dialer := net.Dialer{
+			Timeout:   30 * time.Second, // defaults from net/http DefaultTransport
+			KeepAlive: 30 * time.Second, // defaults from net/http DefaultTransport
+			LocalAddr: tcpaddr,
+		}
 		transport.Dial = dialer.Dial
 	} else {
 		log.Println("Failed to resolve", addr, " to a TCP address")
