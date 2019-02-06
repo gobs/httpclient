@@ -11,7 +11,6 @@ import (
 	"io/ioutil"
 	"log"
 	"mime/multipart"
-	"net"
 	"net/http"
 	"net/http/httptrace"
 	"net/url"
@@ -24,8 +23,8 @@ import (
 
 	"github.com/gobs/pretty"
 	"github.com/gobs/simplejson"
-
-	"github.com/jbenet/go-reuseport"
+	//"net"
+	//"github.com/jbenet/go-net-reuse"
 )
 
 var (
@@ -404,6 +403,7 @@ func (self *HttpClient) GetTimeout() time.Duration {
 // Set LocalAddr in Dialer
 // (this assumes you also want the SO_REUSEPORT/SO_REUSEADDR stuff)
 //
+/*
 func (self *HttpClient) SetLocalAddr(addr string) {
 	transport, ok := self.client.Transport.(*http.Transport)
 	if transport == nil {
@@ -416,7 +416,7 @@ func (self *HttpClient) SetLocalAddr(addr string) {
 		return
 	}
 	if tcpaddr, err := net.ResolveTCPAddr("tcp", addr); err == nil {
-		dialer := &reuseport.Dialer{
+		dialer := &reuse.Dialer{
 			D: net.Dialer{
 				Timeout:   30 * time.Second, // defaults from net/http DefaultTransport
 				KeepAlive: 30 * time.Second, // defaults from net/http DefaultTransport
@@ -427,6 +427,7 @@ func (self *HttpClient) SetLocalAddr(addr string) {
 		log.Println("Failed to resolve", addr, " to a TCP address")
 	}
 }
+*/
 
 //
 // add default headers plus extra headers
@@ -438,7 +439,9 @@ func (self *HttpClient) addHeaders(req *http.Request, headers map[string]string)
 	}
 
 	for k, v := range self.Headers {
-		req.Header.Set(k, v)
+		if _, add := headers[k]; !add {
+			req.Header.Set(k, v)
+		}
 	}
 
 	for _, c := range self.Cookies {
