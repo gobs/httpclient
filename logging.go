@@ -168,6 +168,9 @@ type RequestTrace struct {
 	Wait         time.Duration
 	Response     time.Duration
 
+	Local  string
+	Remote string
+
 	startTime time.Time
 }
 
@@ -185,9 +188,11 @@ func (r *RequestTrace) NewClientTrace(trace bool) *httptrace.ClientTrace {
 	return &httptrace.ClientTrace{
 		GotConn: func(info httptrace.GotConnInfo) {
 			r.Connected = info.WasIdle
+			r.Local = info.Conn.LocalAddr().String()
+			r.Remote = info.Conn.RemoteAddr().String()
 
 			if trace {
-				log.Println("GotConn", info.Conn.RemoteAddr(), "reused:", info.Reused, "wasIdle:", info.WasIdle)
+				log.Println("GotConn", r.Remote, "reused:", info.Reused, "wasIdle:", info.WasIdle)
 			}
 		},
 
