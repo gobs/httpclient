@@ -185,7 +185,7 @@ func TestSendRequestGet(test *testing.T) {
 	client.UserAgent = "TestClient 0.1"
 	client.Verbose = true
 
-	resp, err := client.SendRequest(Method("GET"), client.Path("get"))
+	resp, err := client.SendRequest(GET, client.Path("get"))
 	test.Log(err, string(resp.Content()))
 }
 
@@ -194,7 +194,7 @@ func TestSendRequestGetParams(test *testing.T) {
 	client.UserAgent = "TestClient 0.1"
 	client.Verbose = true
 
-	resp, err := client.SendRequest(Method("GET"), client.Path("get"), Params(params))
+	resp, err := client.SendRequest(GET, client.Path("get"), Params(params))
 	test.Log(err, string(resp.Content()))
 }
 
@@ -205,7 +205,7 @@ func TestSendRequestPost(test *testing.T) {
 
 	data := bytes.NewBuffer([]byte("the body"))
 
-	resp, err := client.SendRequest(Method("POST"), client.Path("post"), Body(data),
+	resp, err := client.SendRequest(POST, client.Path("post"), Body(data),
 		Header(map[string]string{
 			"Content-Type":        "text/plain",
 			"Content-Disposition": "attachment;filename=test.txt",
@@ -218,10 +218,19 @@ func TestSendRequestJson(test *testing.T) {
 	client.UserAgent = "TestClient 0.1"
 	client.Verbose = true
 
-	resp, err := client.SendRequest(Method("POST"), client.Path("post"), JsonBody(params),
+	resp, err := client.SendRequest(POST, client.Path("post"), JsonBody(params),
 		Header(map[string]string{
 			"Content-Type":        "text/plain",
 			"Content-Disposition": "attachment;filename=test.txt",
 		}))
+	test.Log(err, string(resp.Content()))
+}
+
+func TestCheckStatus(test *testing.T) {
+	client := NewHttpClient(BASE_URL)
+	client.UserAgent = "TestClient 0.1"
+	client.Verbose = true
+
+	resp, err := CheckStatus(client.SendRequest(GET, client.Path("status/555")))
 	test.Log(err, string(resp.Content()))
 }

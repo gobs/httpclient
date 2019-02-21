@@ -154,6 +154,20 @@ func (r *HttpResponse) ResponseError() error {
 }
 
 //
+// CheckStatus returns err if not null or an HTTP status if the response was not "succesfull"
+//
+// usage:
+//    resp, err := httpclient.CheckStatus(httpclient.SendRequest(params...))
+//
+func CheckStatus(r *HttpResponse, err error) (*HttpResponse, error) {
+	if err != nil {
+		return r, err
+	}
+
+	return r, r.ResponseError()
+}
+
+//
 // Check if the input value is a "primitive" that can be safely stringified
 //
 func canStringify(v reflect.Value) bool {
@@ -531,6 +545,14 @@ func Method(m string) RequestOption {
 		return req, nil
 	}
 }
+
+var (
+	HEAD   = Method("HEAD")
+	GET    = Method("GET")
+	POST   = Method("POST")
+	PUT    = Method("PUT")
+	DELETE = Method("DELETE")
+)
 
 // set the request URL
 func URL(u *url.URL) RequestOption {
