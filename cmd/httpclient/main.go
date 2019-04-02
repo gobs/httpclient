@@ -308,7 +308,14 @@ func main() {
 			name := headerName(parts[0])
 
 			if len(parts) == 2 {
-				client.Headers[name] = unquote(parts[1])
+				value := unquote(parts[1])
+
+				if value == "" {
+					delete(client.Headers, name)
+				} else {
+					client.Headers[name] = value
+				}
+
 				if !commander.GetBoolVar("print") {
 					return
 				}
