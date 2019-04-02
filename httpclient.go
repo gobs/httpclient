@@ -347,10 +347,8 @@ func NewHttpClient(base string) (httpClient *HttpClient) {
 	httpClient.Headers = make(map[string]string)
 	httpClient.FollowRedirects = true
 
-	if u, err := url.Parse(base); err != nil {
+	if err := httpClient.SetBase(base); err != nil {
 		log.Fatal(err)
-	} else {
-		httpClient.BaseURL = u
 	}
 
 	return
@@ -390,8 +388,9 @@ func (self *HttpClient) GetTransport() http.RoundTripper {
 func (self *HttpClient) AllowInsecure(insecure bool) {
 	if insecure {
 		tr := &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-		}
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: true,
+			}}
 
 		self.client.Transport = tr
 	} else {
