@@ -382,6 +382,20 @@ func (self *HttpClient) GetTransport() http.RoundTripper {
 }
 
 //
+// Set CookieJar
+//
+func (self *HttpClient) SetCookieJar(jar http.CookieJar) {
+	self.client.Jar = jar
+}
+
+//
+// Get current CookieJar
+//
+func (self *HttpClient) GetCookieJar() http.CookieJar {
+	return self.client.Jar
+}
+
+//
 // Allow connections via HTTPS even if something is wrong with the certificate
 // (self-signed or expired)
 //

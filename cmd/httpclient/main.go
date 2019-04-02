@@ -8,6 +8,9 @@ import (
 	"github.com/gobs/httpclient"
 	"github.com/gobs/simplejson"
 
+	"golang.org/x/net/publicsuffix"
+	"net/http/cookiejar"
+
 	"encoding/base64"
 	"fmt"
 	"net/url"
@@ -77,6 +80,11 @@ func request(cmd *cmd.Cmd, client *httpclient.HttpClient, method, params string,
 			fmt.Println(string(body))
 		}
 	}
+
+	//cookies := res.Cookies()
+	//if len(cookies) > 0 {
+	//        client.Cookies = cookies
+	//}
 
 	cmd.SetVar("body", string(body))
 	if rtrace != nil {
@@ -396,6 +404,59 @@ func main() {
 				fmt.Println(string(decoded))
 				commander.SetVar("body", string(decoded))
 			}
+			return
+		},
+		nil})
+
+	commander.Add(cmd.Command{"cookiejar",
+		`
+                cookiejar [--add|--delete|domain]
+                `,
+		func(line string) (stop bool) {
+			if line == "--add" {
+				if client.GetCookieJar() != nil {
+					fmt.Println("you already have a cookie jar")
+					return
+				}
+
+				jar, err := cookiejar.New(&cookiejar.Options{PublicSuffixList: publicsuffix.List})
+				if err != nil {
+					fmt.Println("cannot create cookiejar:", err)
+					commander.SetVar("error", err)
+				}
+
+				client.SetCookieJar(jar)
+				fmt.Println("cookiejar added")
+			} else if line == "--delete" || line == "--remove" {
+				client.SetCookieJar(nil)
+				fmt.Println("cookiejar removed")
+			} else if strings.HasPrefix(line, "-") {
+				fmt.Println("invalid option", line)
+				fmt.Println("usage: cookiejar [--add|--delete]")
+			} else if line != "" {
+				if client.GetCookieJar() == nil {
+					fmt.Println("no cookiejar")
+					return
+				}
+
+				u, err := url.Parse(line)
+				if err != nil {
+					fmt.Println(err)
+					commander.SetVar("error", err)
+					return
+				}
+
+				cookies := client.GetCookieJar().Cookies(u)
+				if len(cookies) == 0 {
+					fmt.Println("no cookies in the cookiejar")
+					return
+				}
+
+				for _, cookie := range cookies {
+					fmt.Printf("  %s: %s\n", cookie.Name, cookie.Value)
+				}
+			}
+
 			return
 		},
 		nil})
