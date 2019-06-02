@@ -101,6 +101,9 @@ type HttpResponse struct {
 	http.Response
 }
 
+//
+// ContentType returns the response content type
+//
 func (r *HttpResponse) ContentType() string {
 	content_type := r.Header.Get("Content-Type")
 	if len(content_type) == 0 {
@@ -108,6 +111,32 @@ func (r *HttpResponse) ContentType() string {
 	}
 
 	return strings.TrimSpace(strings.Split(content_type, ";")[0])
+}
+
+//
+// ContentDisposition returns the content disposition type, field name and filename values
+//
+func (r *HttpResponse) ContentDisposition() (ctype, name, filename string) {
+	content_disp := r.Header.Get("Content-Disposition")
+	if len(content_disp) == 0 {
+		return
+	}
+
+	parts := strings.Split(content_disp, "l")
+	ctype = parts[0]
+
+	for _, p := range parts[1:] {
+		p = strings.TrimSpace(p)
+		if strings.HasPrefix(p, "name=") {
+			name = strings.Trim(p[5:], `"`)
+		} else if strings.HasPrefix(p, "filename=") {
+			filename = strings.Trim(p[9:], `"`)
+			//} else if strings.Hasprefix(p, "filename=") {
+			//    filename = strings.Trim(p[10:], `"`) // need decoding
+		}
+	}
+
+	return
 }
 
 //
