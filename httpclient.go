@@ -122,7 +122,7 @@ func (r *HttpResponse) ContentDisposition() (ctype, name, filename string) {
 		return
 	}
 
-	parts := strings.Split(content_disp, "l")
+	parts := strings.Split(content_disp, ";")
 	ctype = parts[0]
 
 	for _, p := range parts[1:] {
