@@ -28,11 +28,23 @@ func (e *HttpFileError) Error() string {
 	return "HttpFileError: " + e.Err.Error()
 }
 
+type headersType map[string]string
+
+var HttpFileNoHead = false
+
 // Creates an HttpFile object. At this point the "file" is "open"
 func OpenHttpFile(url string, headers map[string]string) (*HttpFile, error) {
 	f := HttpFile{Url: url, Headers: headers, client: &http.Client{}, pos: 0, len: -1}
 
-	resp, err := f.do("HEAD", nil)
+	hmethod := "HEAD"
+	var hheaders map[string]string
+
+	if HttpFileNoHead { // some servers don't support HEAD, try with a GET of 0 bytes (actually 1)
+		hmethod = "GET"
+		hheaders = headersType{"Range": "bytes=0-0"}
+	}
+
+	resp, err := f.do(hmethod, hheaders)
 	defer CloseResponse(resp)
 
 	if err != nil {
@@ -41,15 +53,21 @@ func OpenHttpFile(url string, headers map[string]string) (*HttpFile, error) {
 	if resp.StatusCode == http.StatusNotFound {
 		return nil, os.ErrNotExist
 	}
-	if resp.StatusCode != http.StatusOK {
+	if resp.StatusCode == http.StatusOK {
+		f.len = resp.ContentLength
+	} else if resp.StatusCode == http.StatusPartialContent {
+		_, _, clen, err := f.getContentRange(resp)
+		if err != nil {
+			return nil, err
+		}
+
+		f.len = clen
+	} else {
 		return nil, &HttpFileError{Err: fmt.Errorf("Unexpected Status %s", resp.Status)}
 	}
 
-	f.len = resp.ContentLength
 	return &f, nil
 }
-
-type headers map[string]string
 
 func (f *HttpFile) do(method string, headers map[string]string) (*http.Response, error) {
 	req, err := http.NewRequest(method, f.Url, nil)
@@ -66,6 +84,21 @@ func (f *HttpFile) do(method string, headers map[string]string) (*http.Response,
 	}
 
 	return f.client.Do(req)
+}
+
+func (f *HttpFile) getContentRange(resp *http.Response) (first, last, total int64, err error) {
+	content_range := resp.Header.Get("Content-Range")
+
+	n, err := fmt.Sscanf(content_range, "bytes %d-%d/%d", &first, &last, &total)
+	if err != nil {
+		DebugLog(f.Debug).Println("Error", err)
+		return -1, -1, -1, err
+	}
+	if n != 3 {
+		return -1, -1, -1, &HttpFileError{Err: fmt.Errorf("Unexpected Content-Range %q (%d)", content_range, n)}
+	}
+
+	return first, last, total, nil
 }
 
 // Returns the file size
@@ -88,7 +121,7 @@ func (f *HttpFile) ReadAt(p []byte, off int64) (int, error) {
 	}
 
 	bytes_range := fmt.Sprintf("bytes=%d-%d", off, off+int64(plen-1))
-	resp, err := f.do("GET", headers{"Range": bytes_range})
+	resp, err := f.do("GET", headersType{"Range": bytes_range})
 	defer CloseResponse(resp)
 
 	if err != nil {
@@ -102,21 +135,10 @@ func (f *HttpFile) ReadAt(p []byte, off int64) (int, error) {
 		return 0, &HttpFileError{Err: fmt.Errorf("Unexpected Status %s", resp.Status)}
 	}
 
-	content_range := resp.Header.Get("Content-Range")
+	first, last, total, err := f.getContentRange(resp)
+	DebugLog(f.Debug).Println("Range", bytes_range, "Content-Range", first, last, total)
 
-	var first, last, total int64
-	n, err := fmt.Sscanf(content_range, "bytes %d-%d/%d", &first, &last, &total)
-	if err != nil {
-		DebugLog(f.Debug).Println("Error", err)
-		return 0, err
-	}
-	if n != 3 {
-		return 0, &HttpFileError{Err: fmt.Errorf("Unexpected Content-Range %q (%d)", content_range, n)}
-	}
-
-	DebugLog(f.Debug).Println("Range", bytes_range, "Content-Range", content_range)
-
-	n, err = io.ReadFull(resp.Body, p)
+	n, err := io.ReadFull(resp.Body, p)
 	if n > 0 && err == io.EOF {
 		// read reached EOF, but archive/zip doesn't like this!
 		DebugLog(f.Debug).Println("Read", n, "reached EOF")
