@@ -182,20 +182,20 @@ func TestRetryAfter(test *testing.T) {
 
 func TestContentDisposition(test *testing.T) {
 	response := HttpResponse{http.Response{
-		Status:        "200 OK",
-		StatusCode:    200,
-		Proto:         "HTTP/1.1",
-		ProtoMajor:    1,
-		ProtoMinor:    1,
-		Header:        http.Header{
-                    "Content-Type": []string{"text/plain"},
-                    "Content-Disposition": []string{`form-data; name="field2"; filename="example.txt`},
-                },
+		Status:     "200 OK",
+		StatusCode: 200,
+		Proto:      "HTTP/1.1",
+		ProtoMajor: 1,
+		ProtoMinor: 1,
+		Header: http.Header{
+			"Content-Type":        []string{"text/plain"},
+			"Content-Disposition": []string{`form-data; name="field2"; filename="example.txt`},
+		},
 		ContentLength: 100,
 	}}
 
-        ctype, name, filename := response.ContentDisposition()
-        test.Log("ctype", ctype, "name", name, "filename", filename)
+	ctype, name, filename := response.ContentDisposition()
+	test.Log("ctype", ctype, "name", name, "filename", filename)
 }
 
 func TestSendRequestGet(test *testing.T) {
