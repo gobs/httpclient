@@ -5,6 +5,7 @@ import (
 	"github.com/gobs/cmd"
 	"github.com/gobs/cmd/plugins/controlflow"
 	"github.com/gobs/cmd/plugins/json"
+	"github.com/gobs/cmd/plugins/stats"
 	"github.com/gobs/httpclient"
 	"github.com/gobs/simplejson"
 
@@ -166,7 +167,7 @@ func main() {
 		Interrupt:   func(sig os.Signal) bool { interrupted = true; return false },
 	}
 
-	commander.Init(controlflow.Plugin, json.Plugin)
+	commander.Init(controlflow.Plugin, json.Plugin, stats.Plugin)
 
 	commander.Add(cmd.Command{
 		"base",
