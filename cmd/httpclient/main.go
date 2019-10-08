@@ -10,6 +10,7 @@ import (
 	"github.com/gobs/simplejson"
 
 	"golang.org/x/net/publicsuffix"
+	"net/http"
 	"net/http/cookiejar"
 
 	"encoding/base64"
@@ -462,7 +463,45 @@ func main() {
 		},
 		nil})
 
+	commander.Add(cmd.Command{"serve",
+		`
+                serve [[host]:port] [dir]
+                `,
+		func(line string) (stop bool) {
+			port := ":3000"
+			dir := "."
+
+			parts := strings.Fields(line)
+			if len(parts) > 2 {
+				fmt.Println("too many arguments")
+				fmt.Println()
+				fmt.Println("usage: serve [[host]:port] [dir]")
+				return
+			}
+
+			for _, p := range parts {
+				if strings.Contains(p, ":") {
+					port = p
+				} else {
+					dir = p
+				}
+			}
+
+			fmt.Printf("Serving directory %q on port %v\n", dir, port)
+			if err := http.ListenAndServe(port, http.FileServer(http.Dir(dir))); err != nil {
+				fmt.Println(err)
+			}
+
+			return
+		},
+		nil})
+
 	commander.Commands["set"] = commander.Commands["var"]
+
+	if len(os.Args) > 1 && os.Args[1] == "serve" {
+		commander.OneCmd(strings.Join(os.Args[1:], " "))
+		return
+	}
 
 	switch len(os.Args) {
 	case 1: // program name only
