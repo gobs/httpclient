@@ -32,6 +32,7 @@ var (
 
 	NoRedirect       = errors.New("No redirect")
 	TooManyRedirects = errors.New("stopped after 10 redirects")
+	NotModified      = errors.New("Not modified")
 )
 
 //
@@ -177,6 +178,10 @@ func (r *HttpResponse) ResponseError() error {
 			Header:     r.Header,
 			Body:       body[:blen],
 		}
+	}
+
+	if r.StatusCode == http.StatusNotModified {
+		return NotModified
 	}
 
 	return nil
