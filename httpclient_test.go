@@ -244,6 +244,15 @@ func TestSendRequestJson(test *testing.T) {
 	test.Log(err, string(resp.Content()))
 }
 
+func TestSendRequestNoBase(test *testing.T) {
+	client := NewHttpClient("")
+	client.UserAgent = "TestClient 0.1"
+	client.Verbose = true
+
+	resp, err := client.SendRequest(GET, URLString(BASE_URL), client.Path("get"))
+	test.Log(err, string(resp.Content()))
+}
+
 func TestCheckStatus(test *testing.T) {
 	client := NewHttpClient(BASE_URL)
 	client.UserAgent = "TestClient 0.1"

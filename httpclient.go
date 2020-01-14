@@ -560,10 +560,12 @@ func (self *HttpClient) checkRedirect(req *http.Request, via []*http.Request) er
 // Create a request object given the method, path, body and extra headers
 //
 func (self *HttpClient) Request(method string, urlpath string, body io.Reader, headers map[string]string) (req *http.Request) {
-	if u, err := self.BaseURL.Parse(urlpath); err != nil {
-		log.Fatal(err)
-	} else {
-		urlpath = u.String()
+	if self.BaseURL != nil {
+		if u, err := self.BaseURL.Parse(urlpath); err != nil {
+			log.Fatal(err)
+		} else {
+			urlpath = u.String()
+		}
 	}
 
 	req, err := http.NewRequest(strings.ToUpper(method), urlpath, body)
@@ -647,7 +649,15 @@ func Path(path string) RequestOption {
 
 func (c *HttpClient) Path(path string) RequestOption {
 	return func(req *http.Request) (*http.Request, error) {
-		u, err := c.BaseURL.Parse(path)
+		var u *url.URL
+		var err error
+
+		if c.BaseURL == nil {
+			u, err = url.Parse(path)
+		} else {
+			u, err = c.BaseURL.Parse(path)
+		}
+
 		if err != nil {
 			return nil, err
 		}
@@ -783,7 +793,12 @@ func Trace(tracer *httptrace.ClientTrace) RequestOption {
 
 // Execute request
 func (self *HttpClient) SendRequest(options ...RequestOption) (*HttpResponse, error) {
-	req, err := http.NewRequest("GET", self.BaseURL.String(), nil)
+	var path string
+	if self.BaseURL != nil {
+		path = self.BaseURL.String()
+	}
+
+	req, err := http.NewRequest("GET", path, nil)
 	if err != nil {
 		return nil, err
 	}
