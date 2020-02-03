@@ -8,6 +8,7 @@ import (
 	"github.com/gobs/cmd/plugins/stats"
 	"github.com/gobs/httpclient"
 	"github.com/gobs/simplejson"
+	"github.com/google/uuid"
 
 	"golang.org/x/net/publicsuffix"
 	"net/http"
@@ -490,6 +491,31 @@ func main() {
 			fmt.Printf("Serving directory %q on port %v\n", dir, port)
 			if err := http.ListenAndServe(port, http.FileServer(http.Dir(dir))); err != nil {
 				fmt.Println(err)
+			}
+
+			return
+		},
+		nil})
+
+	commander.Add(cmd.Command{"uuid",
+		`
+                uuid [1|4]
+                `,
+		func(line string) (stop bool) {
+			gen := uuid.NewUUID // type 1
+			if line == "4" {    // type 4
+				gen = uuid.NewRandom
+			}
+
+			uid, err := gen()
+			if err != nil {
+				fmt.Println(err)
+				commander.SetVar("error", err)
+				commander.SetVar("uuid", "")
+			} else {
+				fmt.Println(uid.String())
+				commander.SetVar("error", "")
+				commander.SetVar("uuid", uid.String())
 			}
 
 			return
