@@ -388,6 +388,19 @@ func NewHttpClient(base string) (httpClient *HttpClient) {
 	return
 }
 
+//
+// Clone an HttpClient (re-use the same http.Client but duplicate the headers)
+//
+func (self *HttpClient) Clone() *HttpClient {
+	clone := *self
+	clone.Headers = make(map[string]string, len(self.Headers))
+	for k, v := range self.Headers {
+		clone.Headers[k] = v
+	}
+
+	return &clone
+}
+
 // Set Base
 //
 //
