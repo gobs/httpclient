@@ -218,23 +218,12 @@ func canStringify(v reflect.Value) bool {
 }
 
 //
-// Given a base URL and a bag of parameteters returns the URL with the encoded parameters
+// ParamValues fills the input url.Values according to params
 //
-func URLWithPathParams(base string, path string, params map[string]interface{}) (u *url.URL) {
-
-	u, err := url.Parse(base)
-	if err != nil {
-		log.Fatal(err)
+func ParamValues(params map[string]interface{}, q url.Values) url.Values {
+	if q == nil {
+		q = url.Values{}
 	}
-
-	if len(path) > 0 {
-		u, err = u.Parse(path)
-		if err != nil {
-			log.Fatal(err)
-		}
-	}
-
-	q := u.Query()
 
 	for k, v := range params {
 		val := reflect.ValueOf(v)
@@ -265,6 +254,27 @@ func URLWithPathParams(base string, path string, params map[string]interface{}) 
 		}
 	}
 
+	return q
+}
+
+//
+// Given a base URL and a bag of parameteters returns the URL with the encoded parameters
+//
+func URLWithPathParams(base string, path string, params map[string]interface{}) (u *url.URL) {
+
+	u, err := url.Parse(base)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if len(path) > 0 {
+		u, err = u.Parse(path)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	q := ParamValues(params, u.Query())
 	u.RawQuery = q.Encode()
 	return u
 }
