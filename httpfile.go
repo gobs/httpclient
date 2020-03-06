@@ -14,9 +14,15 @@ type HttpFile struct {
 	Headers map[string]string
 	Debug   bool
 
+	Buffer []byte
+
 	client *http.Client
 	pos    int64
 	len    int64
+
+	bpos   int64 // seek position for buffered reads
+	bstart int   // first available byte in buffer
+	bend   int   // last available byte in buffer
 }
 
 // HttpFileError wraps a network error
@@ -107,9 +113,8 @@ func (f *HttpFile) Size() int64 {
 	return f.len
 }
 
-// The ReaderAt interface
-func (f *HttpFile) ReadAt(p []byte, off int64) (int, error) {
-	DebugLog(f.Debug).Println("ReadAt", off, len(p))
+func (f *HttpFile) readAt(p []byte, off int64) (int, error) {
+	DebugLog(f.Debug).Println("readAt", off, len(p))
 
 	if f.client == nil {
 		return 0, os.ErrInvalid
@@ -120,18 +125,26 @@ func (f *HttpFile) ReadAt(p []byte, off int64) (int, error) {
 		return plen, nil
 	}
 
-	bytes_range := fmt.Sprintf("bytes=%d-%d", off, off+int64(plen-1))
+	end := off + int64(plen)
+	if end > f.len {
+		end = f.len
+	}
+
+	bytes_range := fmt.Sprintf("bytes=%d-%d", off, end-1)
 	resp, err := f.do("GET", headersType{"Range": bytes_range})
 	defer CloseResponse(resp)
 
-	if err != nil {
-		DebugLog(f.Debug).Println("ReadAt error", err)
+	switch {
+	case err != nil:
+		DebugLog(f.Debug).Println("readAt error", err)
 		return 0, &HttpFileError{Err: err}
-	}
-	if resp.StatusCode == http.StatusRequestedRangeNotSatisfiable {
+
+	case resp.StatusCode == http.StatusRequestedRangeNotSatisfiable:
+		DebugLog(f.Debug).Println("readAt http.StatusRequestedRangeNotSatisfiable")
 		return 0, io.EOF
-	}
-	if resp.StatusCode != http.StatusPartialContent {
+
+	case resp.StatusCode != http.StatusPartialContent:
+		DebugLog(f.Debug).Println("readAt error", resp.Status)
 		return 0, &HttpFileError{Err: fmt.Errorf("Unexpected Status %s", resp.Status)}
 	}
 
@@ -141,16 +154,91 @@ func (f *HttpFile) ReadAt(p []byte, off int64) (int, error) {
 	n, err := io.ReadFull(resp.Body, p)
 	if n > 0 && err == io.EOF {
 		// read reached EOF, but archive/zip doesn't like this!
-		DebugLog(f.Debug).Println("Read", n, "reached EOF")
+		DebugLog(f.Debug).Println("readAt", n, "reached EOF")
 		err = nil
 	}
 
-	DebugLog(f.Debug).Println("Read", n, err)
+	DebugLog(f.Debug).Println("readAt", n, err)
 	return n, err
+}
+
+func (f *HttpFile) readFromBuffer(p []byte, off int64) (int, error) {
+	ppos := 0
+	plen := len(p)
+
+	if off != f.bpos {
+		blen := f.bend - f.bstart
+
+		if blen == 0 {
+			f.bstart = 0
+			f.bend = 0
+		} else if f.bpos < off && f.bpos+int64(blen) > off {
+			drop := int(off - f.bpos)
+			f.bstart += drop
+
+			DebugLog(f.Debug).Println("readFrom", off, "pos", f.bpos, "drop", drop, "bytes, saved", blen-drop, "bytes")
+		} else {
+			DebugLog(f.Debug).Println("readFrom", off, "pos", f.bpos, "dropping", blen, "bytes")
+
+			f.bstart = 0
+			f.bend = 0
+		}
+
+		f.bpos = off
+	}
+
+	for ppos < plen {
+		DebugLog(f.Debug).Println("readFromBuffer", ppos, plen, "pos", f.bpos)
+
+		if f.bstart < f.bend { // there is already some data
+			n := copy(p[ppos:], f.Buffer[f.bstart:f.bend])
+
+			f.bstart += n
+			f.bpos += int64(n)
+			ppos += n
+
+			if ppos >= plen {
+				DebugLog(f.Debug).Println("readFromBuffer", ppos, "done", "pos", f.bpos)
+				return ppos, nil
+			}
+		}
+
+		if plen-ppos > len(f.Buffer) { // no need to read in buffer
+			f.bstart = 0
+			f.bend = 0
+
+			return f.readAt(p[ppos:], f.bpos)
+		}
+
+		n, err := f.readAt(f.Buffer, f.bpos)
+
+		f.bstart = 0
+		f.bend = n
+
+		if err != nil && n == 0 { // don't return an error if we read something
+			DebugLog(f.Debug).Println("readFromBuffer", "error", err)
+			return 0, err
+		}
+	}
+
+	panic("should not get here")
+	return 0, nil
+}
+
+// The ReaderAt interface
+func (f *HttpFile) ReadAt(p []byte, off int64) (int, error) {
+	DebugLog(f.Debug).Println("ReadAt", off, "len", len(p))
+
+	if f.Buffer != nil {
+		return f.readFromBuffer(p, off)
+	}
+
+	return f.readAt(p, off)
 }
 
 // The Reader interface
 func (f *HttpFile) Read(p []byte) (int, error) {
+	DebugLog(f.Debug).Println("Read from", f.pos, "len", len(p))
 
 	n, err := f.ReadAt(p, f.pos)
 	if n > 0 {
@@ -192,7 +280,10 @@ func (f *HttpFile) Seek(offset int64, whence int) (int64, error) {
 	if newpos < 0 {
 		return 0, os.ErrInvalid
 	} else {
-		f.pos = newpos
+		if f.pos != newpos {
+			f.pos = newpos
+		}
+
 		return f.pos, nil
 	}
 }
