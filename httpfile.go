@@ -3,8 +3,10 @@ package httpclient
 import (
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
+	"time"
 )
 
 // HttpFile is a file-like object that allows reading and seeking from an
@@ -37,6 +39,8 @@ func (e *HttpFileError) Error() string {
 type headersType map[string]string
 
 var HttpFileNoHead = false
+var HttpFileRetries = 10
+var HttpFileRetryWait = 60 * time.Second
 
 // Creates an HttpFile object. At this point the "file" is "open"
 func OpenHttpFile(url string, headers map[string]string) (*HttpFile, error) {
@@ -89,7 +93,28 @@ func (f *HttpFile) do(method string, headers map[string]string) (*http.Response,
 		req.Header.Set(k, v)
 	}
 
-	return f.client.Do(req)
+	retry := 0
+
+	for {
+		res, err := f.client.Do(req)
+		if err != nil {
+			return res, err
+		}
+
+		if res.StatusCode == 403 && res.Header.Get("X-Cache") == "Error from cloudfront" {
+			log.Println(req, err)
+
+			retry++
+
+			if retry < HttpFileRetries {
+				log.Println("Retry", retry, "Sleep...")
+				time.Sleep(HttpFileRetryWait)
+				continue
+			}
+		}
+
+		return res, err
+	}
 }
 
 func (f *HttpFile) getContentRange(resp *http.Response) (first, last, total int64, err error) {
