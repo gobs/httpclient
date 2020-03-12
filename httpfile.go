@@ -5,6 +5,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"time"
 )
@@ -44,7 +45,13 @@ var HttpFileRetryWait = 60 * time.Second
 
 // Creates an HttpFile object. At this point the "file" is "open"
 func OpenHttpFile(url string, headers map[string]string) (*HttpFile, error) {
-	f := HttpFile{Url: url, Headers: headers, client: &http.Client{}, pos: 0, len: -1}
+	client := &http.Client{
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return NoRedirect
+		},
+	}
+
+	f := HttpFile{Url: url, Headers: headers, client: client, pos: 0, len: -1}
 
 	hmethod := "HEAD"
 	var hheaders map[string]string
@@ -80,6 +87,7 @@ func OpenHttpFile(url string, headers map[string]string) (*HttpFile, error) {
 }
 
 func (f *HttpFile) do(method string, headers map[string]string) (*http.Response, error) {
+retry_redir:
 	req, err := http.NewRequest(method, f.Url, nil)
 	if err != nil {
 		return nil, err
@@ -93,10 +101,21 @@ func (f *HttpFile) do(method string, headers map[string]string) (*http.Response,
 		req.Header.Set(k, v)
 	}
 
+	redirect := false
 	retry := 0
 
 	for {
 		res, err := f.client.Do(req)
+		if uerr, ok := err.(*url.Error); ok && uerr.Err == NoRedirect {
+			if redirect { // we already redirected once
+				return res, err
+			}
+
+			redirect = true
+			f.Url = res.Header.Get("Location")
+			goto retry_redir
+		}
+
 		if err != nil {
 			return res, err
 		}
