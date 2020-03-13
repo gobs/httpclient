@@ -210,6 +210,11 @@ func (f *HttpFile) readFromBuffer(p []byte, off int64) (int, error) {
 	ppos := 0
 	plen := len(p)
 
+        if plen == 0 {
+                DebugLog(f.Debug).Println("readFrom", off, "zero bbuffer")
+                return 0, nil
+        }
+
 	if off != f.bpos {
 		blen := f.bend - f.bstart
 
@@ -264,6 +269,8 @@ func (f *HttpFile) readFromBuffer(p []byte, off int64) (int, error) {
 			return 0, err
 		}
 	}
+
+        log.Println("ppos", ppos, "plen", plen, "bstart", f.bstart, "bend", f.bend)
 
 	panic("should not get here")
 	return 0, nil
