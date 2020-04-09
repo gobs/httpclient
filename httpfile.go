@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -19,9 +20,10 @@ type HttpFile struct {
 
 	Buffer []byte
 
-	client *http.Client
-	pos    int64
-	len    int64
+	origUrl string
+	client  *http.Client
+	pos     int64
+	len     int64
 
 	bpos   int64 // seek position for buffered reads
 	bstart int   // first available byte in buffer
@@ -51,7 +53,7 @@ func OpenHttpFile(url string, headers map[string]string) (*HttpFile, error) {
 		},
 	}
 
-	f := HttpFile{Url: url, Headers: headers, client: client, pos: 0, len: -1}
+	f := HttpFile{Url: url, Headers: headers, origUrl: url, client: client, pos: 0, len: -1}
 
 	hmethod := "HEAD"
 	var hheaders map[string]string
@@ -120,15 +122,32 @@ retry_redir:
 			return res, err
 		}
 
-		if res.StatusCode == 403 && res.Header.Get("X-Cache") == "Error from cloudfront" {
-			log.Println(req, err)
+		if res.StatusCode == 403 {
+			if res.Header.Get("X-Cache") == "Error from cloudfront" {
+				log.Println(req, err)
 
-			retry++
+				retry++
 
-			if retry < HttpFileRetries {
-				log.Println("Retry", retry, "Sleep...")
-				time.Sleep(HttpFileRetryWait)
-				continue
+				if retry < HttpFileRetries {
+					log.Println("Retry", retry, "Sleep...")
+					time.Sleep(HttpFileRetryWait)
+					continue
+				}
+			} else if res.Header.Get("X-AMZ-Request-ID") != "" {
+				var buf [256]byte
+				n, err := res.Body.Read(buf[:])
+				if err == nil {
+					errbody := string(buf[:n])
+
+					log.Println(req, err, errbody)
+
+					if strings.Contains(errbody, `<Message>Request has expired</Message>`) &&
+						f.Url != f.origUrl { // retry redirect
+						log.Println("Retry redirect")
+						f.Url = f.origUrl
+						goto retry_redir
+					}
+				}
 			}
 		}
 
@@ -210,10 +229,10 @@ func (f *HttpFile) readFromBuffer(p []byte, off int64) (int, error) {
 	ppos := 0
 	plen := len(p)
 
-        if plen == 0 {
-                DebugLog(f.Debug).Println("readFrom", off, "zero bbuffer")
-                return 0, nil
-        }
+	if plen == 0 {
+		DebugLog(f.Debug).Println("readFrom", off, "zero bbuffer")
+		return 0, nil
+	}
 
 	if off != f.bpos {
 		blen := f.bend - f.bstart
@@ -270,7 +289,7 @@ func (f *HttpFile) readFromBuffer(p []byte, off int64) (int, error) {
 		}
 	}
 
-        log.Println("ppos", ppos, "plen", plen, "bstart", f.bstart, "bend", f.bend)
+	log.Println("ppos", ppos, "plen", plen, "bstart", f.bstart, "bend", f.bend)
 
 	panic("should not get here")
 	return 0, nil
