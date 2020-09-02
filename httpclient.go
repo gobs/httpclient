@@ -784,6 +784,8 @@ func Header(headers map[string]string) RequestOption {
 				if len, err := strconv.Atoi(v); err == nil && req.ContentLength <= 0 {
 					req.ContentLength = int64(len)
 				}
+			} else if v == "" {
+				req.Header.Del(k)
 			} else {
 				req.Header.Set(k, v)
 			}
