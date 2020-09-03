@@ -16,7 +16,7 @@ import (
 // A transport that prints request and response
 
 type LoggingTransport struct {
-	t            *http.Transport
+	t            http.RoundTripper
 	requestBody  bool
 	responseBody bool
 	timing       bool
@@ -71,11 +71,13 @@ func (lt *LoggingTransport) RoundTrip(req *http.Request) (resp *http.Response, e
 	return
 }
 
+/*
 func (lt *LoggingTransport) CancelRequest(req *http.Request) {
 	dreq, _ := httputil.DumpRequest(req, false)
 	fmt.Println("CANCEL REQUEST:", strconv.Quote(string(dreq)))
 	lt.t.CancelRequest(req)
 }
+*/
 
 // Enable logging requests/response headers
 //
@@ -92,7 +94,7 @@ func StopLogging() {
 }
 
 // Wrap input transport into a LoggingTransport
-func LoggedTransport(t *http.Transport, requestBody, responseBody, timing bool) http.RoundTripper {
+func LoggedTransport(t http.RoundTripper, requestBody, responseBody, timing bool) http.RoundTripper {
 	return &LoggingTransport{t, requestBody, responseBody, timing}
 }
 
