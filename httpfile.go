@@ -39,6 +39,22 @@ func (e *HttpFileError) Error() string {
 	return "HttpFileError: " + e.Err.Error()
 }
 
+func (e *HttpFileError) Temporary() bool {
+	if ue, ok := e.Err.(*url.Error); ok {
+		return ue.Temporary()
+	}
+
+	return false
+}
+
+func (e *HttpFileError) Timeout() bool {
+	if ue, ok := e.Err.(*url.Error); ok {
+		return ue.Timeout()
+	}
+
+	return false
+}
+
 type headersType map[string]string
 
 var HttpFileNoHead = false

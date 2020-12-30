@@ -537,11 +537,12 @@ func (self *HttpClient) addHeaders(req *http.Request, headers map[string]string)
 			if len, err := strconv.Atoi(v); err == nil && req.ContentLength <= 0 {
 				req.ContentLength = int64(len)
 			}
-		} else {
+		} else if v != "" {
 			req.Header.Set(k, v)
+		} else {
+			req.Header.Del(k)
 		}
 	}
-
 }
 
 //
