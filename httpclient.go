@@ -27,27 +27,44 @@ import (
 	//"github.com/jbenet/go-net-reuse"
 )
 
+const (
+	DefaultTimeout  = 30 * time.Second
+	DefaultMaxConns = 50
+)
+
 var (
-	DefaultClient = &http.Client{} // we use our own default client, so we can change the TLS configuration
+	// we use our own default client, so we can change the TLS configuration
+	DefaultClient                      = &http.Client{Timeout: DefaultTimeout}
+	DefaultTransport http.RoundTripper = http.DefaultTransport.(*http.Transport).Clone()
 
 	NoRedirect       = errors.New("No redirect")
 	TooManyRedirects = errors.New("stopped after 10 redirects")
 	NotModified      = errors.New("Not modified")
 )
 
+func init() {
+	// some better defaults for the transport
+	if tr, ok := DefaultTransport.(*http.Transport); ok {
+		tr.MaxIdleConns = DefaultMaxConns
+		tr.MaxConnsPerHost = DefaultMaxConns
+		tr.MaxIdleConnsPerHost = DefaultMaxConns
+	}
+}
+
 //
 // Allow connections via HTTPS even if something is wrong with the certificate
 // (self-signed or expired)
 //
 func AllowInsecure(insecure bool) {
-	if insecure {
-		tr := &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-		}
+	if tr, ok := DefaultTransport.(*http.Transport); ok {
+		if insecure {
+			tr := tr.Clone()
+			tr.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 
-		DefaultClient.Transport = tr
-	} else {
-		DefaultClient.Transport = nil
+			DefaultClient.Transport = tr
+		} else {
+			DefaultClient.Transport = DefaultTransport
+		}
 	}
 }
 
@@ -382,12 +399,28 @@ type HttpClient struct {
 	Close bool
 }
 
+func cloneDefaultTransport() http.RoundTripper {
+	type cloner interface {
+		Clone() http.RoundTripper
+	}
+
+	if cl, ok := DefaultTransport.(cloner); ok {
+		return cl.Clone()
+	}
+
+	return DefaultTransport
+}
+
 //
 // Create a new HttpClient
 //
 func NewHttpClient(base string) (httpClient *HttpClient) {
 	httpClient = new(HttpClient)
-	httpClient.client = &http.Client{CheckRedirect: httpClient.checkRedirect}
+	httpClient.client = &http.Client{
+		CheckRedirect: httpClient.checkRedirect,
+		Transport:     cloneDefaultTransport(),
+		Timeout:       DefaultTimeout,
+	}
 	httpClient.Headers = make(map[string]string)
 	httpClient.FollowRedirects = true
 
@@ -482,36 +515,6 @@ func (self *HttpClient) SetTimeout(t time.Duration) {
 func (self *HttpClient) GetTimeout() time.Duration {
 	return self.client.Timeout
 }
-
-//
-// Set LocalAddr in Dialer
-// (this assumes you also want the SO_REUSEPORT/SO_REUSEADDR stuff)
-//
-/*
-func (self *HttpClient) SetLocalAddr(addr string) {
-	transport, ok := self.client.Transport.(*http.Transport)
-	if transport == nil {
-		if transport, ok = http.DefaultTransport.(*http.Transport); !ok {
-			log.Println("SetLocalAddr for http.DefaultTransport != http.Transport")
-			return
-		}
-	} else if !ok {
-		log.Println("SetLocalAddr for client.Transport != http.Transport")
-		return
-	}
-	if tcpaddr, err := net.ResolveTCPAddr("tcp", addr); err == nil {
-		dialer := &reuse.Dialer{
-			D: net.Dialer{
-				Timeout:   30 * time.Second, // defaults from net/http DefaultTransport
-				KeepAlive: 30 * time.Second, // defaults from net/http DefaultTransport
-				LocalAddr: tcpaddr,
-			}}
-		transport.Dial = dialer.Dial
-	} else {
-		log.Println("Failed to resolve", addr, " to a TCP address")
-	}
-}
-*/
 
 //
 // add default headers plus extra headers

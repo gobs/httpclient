@@ -71,14 +71,6 @@ func (lt *LoggingTransport) RoundTrip(req *http.Request) (resp *http.Response, e
 	return
 }
 
-/*
-func (lt *LoggingTransport) CancelRequest(req *http.Request) {
-	dreq, _ := httputil.DumpRequest(req, false)
-	fmt.Println("CANCEL REQUEST:", strconv.Quote(string(dreq)))
-	lt.t.CancelRequest(req)
-}
-*/
-
 // Enable logging requests/response headers
 //
 // if requestBody == true, also log request body
@@ -86,11 +78,21 @@ func (lt *LoggingTransport) CancelRequest(req *http.Request) {
 // if timing == true, also log elapsed time
 func StartLogging(requestBody, responseBody, timing bool) {
 	http.DefaultTransport = &LoggingTransport{&http.Transport{}, requestBody, responseBody, timing}
+
+	DefaultTransport = &LoggingTransport{DefaultTransport, requestBody, responseBody, timing}
 }
 
 // Disable logging requests/responses
 func StopLogging() {
-	http.DefaultTransport = &http.Transport{}
+	if lg, ok := http.DefaultTransport.(*LoggingTransport); ok {
+		http.DefaultTransport = lg.t
+	} else {
+		http.DefaultTransport = &http.Transport{}
+	}
+
+	if lg, ok := DefaultTransport.(*LoggingTransport); ok {
+		DefaultTransport = lg.t
+	}
 }
 
 // Wrap input transport into a LoggingTransport

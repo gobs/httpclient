@@ -261,3 +261,20 @@ func TestCheckStatus(test *testing.T) {
 	resp, err := CheckStatus(client.SendRequest(GET, client.Path("status/555")))
 	test.Log(err, string(resp.Content()))
 }
+
+func TestLogging(test *testing.T) {
+	StartLogging(true, true, true)
+
+	client := NewHttpClient(BASE_URL)
+	client.UserAgent = "TestClient 0.1"
+
+	data := bytes.NewBuffer([]byte("the body"))
+
+	resp, err := client.Post("post", data, map[string]string{
+		"Content-Type":        "text/plain",
+		"Content-Disposition": "attachment;filename=test.txt",
+		"Content-Length":      strconv.Itoa(data.Len())})
+	test.Log(err, string(resp.Content()))
+
+	StopLogging()
+}
