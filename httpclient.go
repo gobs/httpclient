@@ -52,6 +52,17 @@ func init() {
 }
 
 //
+// Disable HTTP/2 client support.
+// This is useful for doing stress tests when you want to create a lot of concurrent HTTP/1.1 connection
+// (the HTTP/2 client would try to multiplex the requests on a single connection).
+//
+func DisableHttp2() {
+	if err := os.Setenv("GODEBUG", "http2client=0"); err != nil {
+		log.Fatal(err)
+	}
+}
+
+//
 // Allow connections via HTTPS even if something is wrong with the certificate
 // (self-signed or expired)
 //
@@ -750,6 +761,18 @@ func JsonBody(body interface{}) RequestOption {
 		req.Body = ioutil.NopCloser(bytes.NewBuffer(b))
 		req.ContentLength = int64(len(b))
 		req.Header.Set("Content-Type", "application/json; charset=utf-8")
+		return req, nil
+	}
+}
+
+// set the request body as a form object
+func FormBody(params map[string]interface{}) RequestOption {
+	return func(req *http.Request) (*http.Request, error) {
+		data := ParamValues(params, nil)
+		r := strings.NewReader(data.Encode())
+		req.Body = ioutil.NopCloser(r)
+		req.ContentLength = int64(r.Len())
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		return req, nil
 	}
 }
