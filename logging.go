@@ -25,14 +25,20 @@ type LoggingTransport struct {
 func (lt *LoggingTransport) RoundTrip(req *http.Request) (resp *http.Response, err error) {
 	dreq, _ := httputil.DumpRequest(req, lt.requestBody)
 	//fmt.Println("REQUEST:", strconv.Quote(string(dreq)))
-	fmt.Println("URL:", req.URL)
-	fmt.Println("REQUEST:", string(dreq))
+	log.Println("URL:", req.URL)
+	log.Println("REQUEST:", string(dreq))
 
 	for _, t := range req.TransferEncoding {
-		fmt.Println("Transfer-Encoding:", t)
+		log.Println("Transfer-Encoding:", t)
 	}
 
-	fmt.Println("")
+	if req.Header.Get("Content-Length") == "" {
+		log.Println("Content-Length:", req.ContentLength)
+	} else {
+		log.Println("Content-Length: from-headers")
+	}
+
+	log.Println("")
 
 	var startTime time.Time
 	var elapsed time.Duration
@@ -52,22 +58,22 @@ func (lt *LoggingTransport) RoundTrip(req *http.Request) (resp *http.Response, e
 			// don't print the body twice
 			dreq, _ = httputil.DumpRequest(req, false)
 		}
-		fmt.Println("ERROR:", err, "REQUEST:", strconv.Quote(string(dreq)))
+		log.Println("ERROR:", err, "REQUEST:", strconv.Quote(string(dreq)))
 	}
 	if resp != nil {
 		dresp, _ := httputil.DumpResponse(resp, lt.responseBody)
-		fmt.Println("RESPONSE:", string(dresp))
+		log.Println("RESPONSE:", string(dresp))
 
 		for _, t := range resp.Request.TransferEncoding {
-			fmt.Println("RQ Transfer-Encoding:", t)
+			log.Println("REQ Transfer-Encoding:", t)
 		}
 	}
 
 	if elapsed > 0 {
-		fmt.Println("ELAPSED TIME:", elapsed.Round(time.Millisecond))
+		log.Println("ELAPSED TIME:", elapsed.Round(time.Millisecond))
 	}
 
-	fmt.Println("")
+	log.Println("")
 	return
 }
 
