@@ -157,7 +157,7 @@ func parseValue(v string) (interface{}, error) {
 }
 
 func main() {
-	var interrupted bool
+	//var interrupted bool
 	var logBody bool
 	var client = httpclient.NewHttpClient("")
 
@@ -166,7 +166,7 @@ func main() {
 	commander := &cmd.Cmd{
 		HistoryFile: ".httpclient_history",
 		EnableShell: true,
-		Interrupt:   func(sig os.Signal) bool { interrupted = true; return false },
+		//Interrupt:   func(sig os.Signal) bool { interrupted = true; return false },
 	}
 
 	commander.Init(controlflow.Plugin, json.Plugin, stats.Plugin)
