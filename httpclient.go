@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"encoding/xml"
 	"errors"
 	"fmt"
 	"io"
@@ -59,6 +60,10 @@ func init() {
 func DisableHttp2() {
 	if err := os.Setenv("GODEBUG", "http2client=0"); err != nil {
 		log.Fatal(err)
+	}
+
+	if tr, ok := DefaultTransport.(*http.Transport); ok {
+		tr.ForceAttemptHTTP2 = false
 	}
 }
 
@@ -372,6 +377,16 @@ func (resp *HttpResponse) JsonDecode(out interface{}, strict bool) error {
 	return dec.Decode(out)
 }
 
+//
+// XmlDecode decodes the response body as XML into specified structure
+//
+func (resp *HttpResponse) XmlDecode(out interface{}, strict bool) error {
+	dec := xml.NewDecoder(resp.Body)
+        dec.Strict = strict
+	defer resp.Body.Close()
+	return dec.Decode(out)
+}
+
 ////////////////////////////////////////////////////////////////////////
 
 //
@@ -518,6 +533,12 @@ func (self *HttpClient) AllowInsecure(insecure bool) {
 //
 func (self *HttpClient) SetTimeout(t time.Duration) {
 	self.client.Timeout = t
+
+	if tr, ok := self.client.Transport.(*http.Transport); ok {
+		tr.TLSHandshakeTimeout = t
+	} else if tr, ok := self.client.Transport.(*LoggingTransport); ok {
+		tr.t.(*http.Transport).TLSHandshakeTimeout = t
+	}
 }
 
 //
@@ -877,7 +898,13 @@ func (self *HttpClient) SendRequest(options ...RequestOption) (*HttpResponse, er
 // Execute request
 //
 func (self *HttpClient) Do(req *http.Request) (*HttpResponse, error) {
-	DebugLog(self.Verbose).Println("REQUEST:", req.Method, req.URL, pretty.PrettyFormat(req.Header))
+	var logClen string
+
+	if req.Header.Get("Content-Length") == "" {
+		logClen = fmt.Sprintf(" (Content-Length: %v)", req.ContentLength)
+	}
+
+	DebugLog(self.Verbose).Println("REQUEST:", req.Method, req.URL, pretty.PrettyFormat(req.Header)+logClen)
 
 	resp, err := self.client.Do(req)
 	if urlerr, ok := err.(*url.Error); ok && urlerr.Err == NoRedirect {
