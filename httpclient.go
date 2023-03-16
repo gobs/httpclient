@@ -52,11 +52,9 @@ func init() {
 	}
 }
 
-//
 // Disable HTTP/2 client support.
 // This is useful for doing stress tests when you want to create a lot of concurrent HTTP/1.1 connection
 // (the HTTP/2 client would try to multiplex the requests on a single connection).
-//
 func DisableHttp2() {
 	if err := os.Setenv("GODEBUG", "http2client=0"); err != nil {
 		log.Fatal(err)
@@ -67,10 +65,8 @@ func DisableHttp2() {
 	}
 }
 
-//
 // Allow connections via HTTPS even if something is wrong with the certificate
 // (self-signed or expired)
-//
 func AllowInsecure(insecure bool) {
 	if tr, ok := DefaultTransport.(*http.Transport); ok {
 		if insecure {
@@ -84,16 +80,12 @@ func AllowInsecure(insecure bool) {
 	}
 }
 
-//
 // Set connection timeout
-//
 func SetTimeout(t time.Duration) {
 	DefaultClient.Timeout = t
 }
 
-//
 // HTTP error
-//
 type HttpError struct {
 	Code       int
 	Message    string
@@ -118,9 +110,7 @@ func (e HttpError) String() string {
 	}
 }
 
-//
 // CloseResponse makes sure we close the response body
-//
 func CloseResponse(r *http.Response) {
 	if r != nil && r.Body != nil {
 		io.Copy(ioutil.Discard, r.Body)
@@ -128,16 +118,12 @@ func CloseResponse(r *http.Response) {
 	}
 }
 
-//
 // A wrapper for http.Response
-//
 type HttpResponse struct {
 	http.Response
 }
 
-//
 // ContentType returns the response content type
-//
 func (r *HttpResponse) ContentType() string {
 	content_type := r.Header.Get("Content-Type")
 	if len(content_type) == 0 {
@@ -147,9 +133,7 @@ func (r *HttpResponse) ContentType() string {
 	return strings.TrimSpace(strings.Split(content_type, ";")[0])
 }
 
-//
 // ContentDisposition returns the content disposition type, field name and filename values
-//
 func (r *HttpResponse) ContentDisposition() (ctype, name, filename string) {
 	content_disp := r.Header.Get("Content-Disposition")
 	if len(content_disp) == 0 {
@@ -173,22 +157,18 @@ func (r *HttpResponse) ContentDisposition() (ctype, name, filename string) {
 	return
 }
 
-//
 // Close makes sure that all data from the body is read
 // before closing the reader.
 //
 // If that is not the desider behaviour, just call HttpResponse.Body.Close()
-//
 func (r *HttpResponse) Close() {
 	if r != nil {
 		CloseResponse(&r.Response)
 	}
 }
 
-//
 // ResponseError checks the StatusCode and return an error if needed.
 // The error is of type HttpError
-//
 func (r *HttpResponse) ResponseError() error {
 	class := r.StatusCode / 100
 	if class != 2 && class != 3 {
@@ -220,12 +200,11 @@ func (r *HttpResponse) ResponseError() error {
 	return nil
 }
 
-//
 // CheckStatus returns err if not null or an HTTP status if the response was not "succesfull"
 //
 // usage:
-//    resp, err := httpclient.CheckStatus(httpclient.SendRequest(params...))
 //
+//	resp, err := httpclient.CheckStatus(httpclient.SendRequest(params...))
 func CheckStatus(r *HttpResponse, err error) (*HttpResponse, error) {
 	if err != nil {
 		return r, err
@@ -234,9 +213,7 @@ func CheckStatus(r *HttpResponse, err error) (*HttpResponse, error) {
 	return r, r.ResponseError()
 }
 
-//
 // Check if the input value is a "primitive" that can be safely stringified
-//
 func canStringify(v reflect.Value) bool {
 	switch v.Kind() {
 	case reflect.Bool,
@@ -250,9 +227,7 @@ func canStringify(v reflect.Value) bool {
 	}
 }
 
-//
 // ParamValues fills the input url.Values according to params
-//
 func ParamValues(params map[string]interface{}, q url.Values) url.Values {
 	if q == nil {
 		q = url.Values{}
@@ -290,9 +265,7 @@ func ParamValues(params map[string]interface{}, q url.Values) url.Values {
 	return q
 }
 
-//
 // Given a base URL and a bag of parameteters returns the URL with the encoded parameters
-//
 func URLWithPathParams(base string, path string, params map[string]interface{}) (u *url.URL) {
 
 	u, err := url.Parse(base)
@@ -316,9 +289,7 @@ func URLWithParams(base string, params map[string]interface{}) (u *url.URL) {
 	return URLWithPathParams(base, "", params)
 }
 
-//
 // http.Get with params
-//
 func Get(urlStr string, params map[string]interface{}) (*HttpResponse, error) {
 	resp, err := DefaultClient.Get(URLWithParams(urlStr, params).String())
 	if err == nil {
@@ -329,9 +300,7 @@ func Get(urlStr string, params map[string]interface{}) (*HttpResponse, error) {
 	}
 }
 
-//
 // http.Post with params
-//
 func Post(urlStr string, params map[string]interface{}) (*HttpResponse, error) {
 	resp, err := DefaultClient.PostForm(urlStr, URLWithParams(urlStr, params).Query())
 	if err == nil {
@@ -342,9 +311,7 @@ func Post(urlStr string, params map[string]interface{}) (*HttpResponse, error) {
 	}
 }
 
-//
-//  Read the body
-//
+// Read the body
 func (resp *HttpResponse) Content() []byte {
 	if resp == nil {
 		return nil
@@ -357,17 +324,13 @@ func (resp *HttpResponse) Content() []byte {
 	return body
 }
 
-//
-//  Try to parse the response body as JSON
-//
+// Try to parse the response body as JSON
 func (resp *HttpResponse) Json() (json *simplejson.Json) {
 	json, _ = simplejson.LoadBytes(resp.Content())
 	return
 }
 
-//
 // JsonDecode decodes the response body as JSON into specified structure
-//
 func (resp *HttpResponse) JsonDecode(out interface{}, strict bool) error {
 	dec := json.NewDecoder(resp.Body)
 	if strict {
@@ -377,21 +340,17 @@ func (resp *HttpResponse) JsonDecode(out interface{}, strict bool) error {
 	return dec.Decode(out)
 }
 
-//
 // XmlDecode decodes the response body as XML into specified structure
-//
 func (resp *HttpResponse) XmlDecode(out interface{}, strict bool) error {
 	dec := xml.NewDecoder(resp.Body)
-        dec.Strict = strict
+	dec.Strict = strict
 	defer resp.Body.Close()
 	return dec.Decode(out)
 }
 
 ////////////////////////////////////////////////////////////////////////
 
-//
 // http.Client with some defaults and stuff
-//
 type HttpClient struct {
 	// the http.Client
 	client *http.Client
@@ -426,20 +385,14 @@ type HttpClient struct {
 }
 
 func cloneDefaultTransport() http.RoundTripper {
-	type cloner interface {
-		Clone() http.RoundTripper
-	}
-
-	if cl, ok := DefaultTransport.(cloner); ok {
+	if cl, ok := DefaultTransport.(interface{ Clone() http.RoundTripper }); ok {
 		return cl.Clone()
 	}
 
 	return DefaultTransport
 }
 
-//
 // Create a new HttpClient
-//
 func NewHttpClient(base string) (httpClient *HttpClient) {
 	httpClient = new(HttpClient)
 	httpClient.client = &http.Client{
@@ -457,9 +410,7 @@ func NewHttpClient(base string) (httpClient *HttpClient) {
 	return
 }
 
-//
 // Clone an HttpClient (re-use the same http.Client but duplicate the headers)
-//
 func (self *HttpClient) Clone() *HttpClient {
 	clone := *self
 	clone.Headers = make(map[string]string, len(self.Headers))
@@ -471,8 +422,6 @@ func (self *HttpClient) Clone() *HttpClient {
 }
 
 // Set Base
-//
-//
 func (self *HttpClient) SetBase(base string) error {
 	u, err := url.Parse(base)
 	if err != nil {
@@ -483,54 +432,42 @@ func (self *HttpClient) SetBase(base string) error {
 	return nil
 }
 
-//
 // Set Transport
-//
 func (self *HttpClient) SetTransport(tr http.RoundTripper) {
 	self.client.Transport = tr
 }
 
-//
 // Get current Transport
-//
 func (self *HttpClient) GetTransport() http.RoundTripper {
 	return self.client.Transport
 }
 
-//
 // Set CookieJar
-//
 func (self *HttpClient) SetCookieJar(jar http.CookieJar) {
 	self.client.Jar = jar
 }
 
-//
 // Get current CookieJar
-//
 func (self *HttpClient) GetCookieJar() http.CookieJar {
 	return self.client.Jar
 }
 
-//
 // Allow connections via HTTPS even if something is wrong with the certificate
 // (self-signed or expired)
-//
 func (self *HttpClient) AllowInsecure(insecure bool) {
+	var config *tls.Config
 	if insecure {
-		tr := &http.Transport{
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: true,
-			}}
+		config = &tls.Config{InsecureSkipVerify: true}
+	}
 
-		self.client.Transport = tr
-	} else {
-		self.client.Transport = nil
+	if tr, ok := self.client.Transport.(*http.Transport); ok {
+		tr.TLSClientConfig = config
+	} else if tr, ok := self.client.Transport.(*LoggingTransport); ok {
+		tr.t.(*http.Transport).TLSClientConfig = config
 	}
 }
 
-//
 // Set connection timeout
-//
 func (self *HttpClient) SetTimeout(t time.Duration) {
 	self.client.Timeout = t
 
@@ -541,16 +478,12 @@ func (self *HttpClient) SetTimeout(t time.Duration) {
 	}
 }
 
-//
 // Get connection timeout
-//
 func (self *HttpClient) GetTimeout() time.Duration {
 	return self.client.Timeout
 }
 
-//
 // add default headers plus extra headers
-//
 func (self *HttpClient) addHeaders(req *http.Request, headers map[string]string) {
 
 	if len(self.UserAgent) > 0 {
@@ -580,9 +513,7 @@ func (self *HttpClient) addHeaders(req *http.Request, headers map[string]string)
 	}
 }
 
-//
 // the callback for CheckRedirect, used to pass along the headers in case of redirection
-//
 func (self *HttpClient) checkRedirect(req *http.Request, via []*http.Request) error {
 	if !self.FollowRedirects {
 		// don't follow redirects if explicitly disabled
@@ -615,9 +546,7 @@ func (self *HttpClient) checkRedirect(req *http.Request, via []*http.Request) er
 	return nil
 }
 
-//
 // Create a request object given the method, path, body and extra headers
-//
 func (self *HttpClient) Request(method string, urlpath string, body io.Reader, headers map[string]string) (req *http.Request) {
 	if self.BaseURL != nil {
 		if u, err := self.BaseURL.Parse(urlpath); err != nil {
@@ -894,9 +823,7 @@ func (self *HttpClient) SendRequest(options ...RequestOption) (*HttpResponse, er
 //
 // Old style requests
 
-//
 // Execute request
-//
 func (self *HttpClient) Do(req *http.Request) (*HttpResponse, error) {
 	var logClen string
 
@@ -922,33 +849,25 @@ func (self *HttpClient) Do(req *http.Request) (*HttpResponse, error) {
 	}
 }
 
-//
 // Execute a DELETE request
-//
 func (self *HttpClient) Delete(path string, headers map[string]string) (*HttpResponse, error) {
 	req := self.Request("DELETE", path, nil, headers)
 	return self.Do(req)
 }
 
-//
 // Execute a HEAD request
-//
 func (self *HttpClient) Head(path string, params map[string]interface{}, headers map[string]string) (*HttpResponse, error) {
 	req := self.Request("HEAD", URLWithParams(path, params).String(), nil, headers)
 	return self.Do(req)
 }
 
-//
 // Execute a GET request
-//
 func (self *HttpClient) Get(path string, params map[string]interface{}, headers map[string]string) (*HttpResponse, error) {
 	req := self.Request("GET", URLWithParams(path, params).String(), nil, headers)
 	return self.Do(req)
 }
 
-//
 // Execute a POST request
-//
 func (self *HttpClient) Post(path string, content io.Reader, headers map[string]string) (*HttpResponse, error) {
 	req := self.Request("POST", path, content, headers)
 	return self.Do(req)
@@ -963,17 +882,13 @@ func (self *HttpClient) PostForm(path string, data url.Values, headers map[strin
 	return self.Do(req)
 }
 
-//
 // Execute a PUT request
-//
 func (self *HttpClient) Put(path string, content io.Reader, headers map[string]string) (*HttpResponse, error) {
 	req := self.Request("PUT", path, content, headers)
 	return self.Do(req)
 }
 
-//
 // Upload a file via form
-//
 func (self *HttpClient) UploadFile(method, path, fileParam, filePath string, payload []byte, params map[string]string, headers map[string]string) (*HttpResponse, error) {
 	var reader io.Reader
 
