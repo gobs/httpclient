@@ -29,8 +29,9 @@ var (
 )
 
 func request(cmd *cmd.Cmd, client *httpclient.HttpClient, method, params string, print, trace bool) *httpclient.HttpResponse {
-	cmd.SetVar("error", "")
 	cmd.SetVar("body", "")
+	cmd.SetVar("status", "")
+	cmd.SetVar("error", "")
 
 	// [-options...] "path" {body}
 
@@ -63,10 +64,14 @@ func request(cmd *cmd.Cmd, client *httpclient.HttpClient, method, params string,
 		rtrace.Done()
 	}
 	if err == nil {
+		cmd.SetVar("status", res.Status)
 		err = res.ResponseError()
 	}
 	if err != nil {
-		fmt.Println("ERROR:", err)
+		if print {
+			fmt.Println("ERROR:", err)
+		}
+
 		cmd.SetVar("error", err)
 	}
 
@@ -240,7 +245,7 @@ func main() {
 		func(line string) (stop bool) {
 			if line == "body" {
 				if !logBody {
-					httpclient.StartLogging(true, true, true)
+					client.StartLogging(true, true, true)
 					logBody = true
 				}
 			} else if line != "" {
@@ -253,7 +258,7 @@ func main() {
 				client.Verbose = val
 
 				if !val && logBody {
-					httpclient.StopLogging()
+					client.StopLogging()
 					logBody = false
 				}
 			}

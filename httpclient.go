@@ -483,6 +483,24 @@ func (self *HttpClient) GetTimeout() time.Duration {
 	return self.client.Timeout
 }
 
+// Enable request logging for this client
+func (self *HttpClient) StartLogging(requestBody, responseBody, timing bool) {
+	if ltr, ok := self.client.Transport.(*LoggingTransport); ok {
+		ltr.requestBody = requestBody
+		ltr.responseBody = responseBody
+		ltr.timing = timing
+	} else {
+		self.SetTransport(LoggedTransport(self.client.Transport, true, true, true))
+	}
+}
+
+// Disable request logging for this client
+func (self *HttpClient) StopLogging() {
+	if ltr, ok := self.client.Transport.(*LoggingTransport); ok {
+		self.SetTransport(ltr.t)
+	}
+}
+
 // add default headers plus extra headers
 func (self *HttpClient) addHeaders(req *http.Request, headers map[string]string) {
 
