@@ -23,7 +23,7 @@ type HttpFile struct {
 	origUrl string
 	client  *http.Client
 	pos     int64
-	len     int64
+	flen    int64
 
 	bpos   int64 // seek position for buffered reads
 	bstart int   // first available byte in buffer
@@ -69,7 +69,7 @@ func OpenHttpFile(url string, headers map[string]string) (*HttpFile, error) {
 		},
 	}
 
-	f := HttpFile{Url: url, Headers: headers, origUrl: url, client: client, pos: 0, len: -1}
+	f := HttpFile{Url: url, Headers: headers, origUrl: url, client: client, pos: 0, flen: -1}
 
 	hmethod := "HEAD"
 	var hheaders map[string]string
@@ -89,14 +89,14 @@ func OpenHttpFile(url string, headers map[string]string) (*HttpFile, error) {
 		return nil, os.ErrNotExist
 	}
 	if resp.StatusCode == http.StatusOK {
-		f.len = resp.ContentLength
+		f.flen = resp.ContentLength
 	} else if resp.StatusCode == http.StatusPartialContent {
 		_, _, clen, err := f.getContentRange(resp)
 		if err != nil {
 			return nil, err
 		}
 
-		f.len = clen
+		f.flen = clen
 	} else {
 		return nil, &HttpFileError{Err: fmt.Errorf("Unexpected Status %s", resp.Status)}
 	}
@@ -188,8 +188,8 @@ func (f *HttpFile) getContentRange(resp *http.Response) (first, last, total int6
 
 // Returns the file size
 func (f *HttpFile) Size() int64 {
-	DebugLog(f.Debug).Println("Size", f.len)
-	return f.len
+	DebugLog(f.Debug).Println("Size", f.flen)
+	return f.flen
 }
 
 func (f *HttpFile) readAt(p []byte, off int64) (int, error) {
@@ -205,8 +205,8 @@ func (f *HttpFile) readAt(p []byte, off int64) (int, error) {
 	}
 
 	end := off + int64(plen)
-	if end > f.len {
-		end = f.len
+	if end > f.flen {
+		end = f.flen
 	}
 
 	bytes_range := fmt.Sprintf("bytes=%d-%d", off, end-1)
@@ -340,7 +340,7 @@ func (f *HttpFile) Close() error {
 	DebugLog(f.Debug).Println("Close")
 	f.client = nil
 	f.pos = -1
-	f.len = -1
+	f.flen = -1
 	return nil
 }
 
@@ -359,7 +359,7 @@ func (f *HttpFile) Seek(offset int64, whence int) (int64, error) {
 			newpos = f.pos + offset
 
 		case 2: // from end
-			newpos = f.len + offset
+			newpos = f.flen + offset
 		}
 	}
 
