@@ -12,7 +12,9 @@ import (
 
 	"golang.org/x/net/publicsuffix"
 	"net/http"
-	"net/http/cookiejar"
+
+	//"net/http/cookiejar"
+	"github.com/juju/persistent-cookiejar"
 
 	"encoding/base64"
 	"fmt"
@@ -22,6 +24,11 @@ import (
 	"strconv"
 	"strings"
 	"time"
+)
+
+const (
+	HISTORY_FILE = ".httpclient_history"
+	COOKIE_FILE  = ".httpclient_cookies"
 )
 
 var (
@@ -169,7 +176,7 @@ func main() {
 	client.UserAgent = "httpclient/0.1"
 
 	commander := &cmd.Cmd{
-		HistoryFile: ".httpclient_history",
+		HistoryFile: HISTORY_FILE,
 		EnableShell: true,
 		//Interrupt:   func(sig os.Signal) bool { interrupted = true; return false },
 	}
@@ -190,11 +197,13 @@ func main() {
 				client.BaseURL = val
 				commander.SetPrompt(fmt.Sprintf("%v> ", client.BaseURL), 40)
 				if !commander.GetBoolVar("print") {
+					commander.SetVar("body", client.BaseURL)
 					return
 				}
 			}
 
 			fmt.Println("base", client.BaseURL)
+			commander.SetVar("body", client.BaseURL)
 			return
 		},
 		nil})
@@ -418,7 +427,7 @@ func main() {
 
 	commander.Add(cmd.Command{"cookiejar",
 		`
-                cookiejar [--add|--delete|domain]
+                cookiejar [--add|--delete|--save|domain]
                 `,
 		func(line string) (stop bool) {
 			if line == "--add" {
@@ -427,7 +436,10 @@ func main() {
 					return
 				}
 
-				jar, err := cookiejar.New(&cookiejar.Options{PublicSuffixList: publicsuffix.List})
+				jar, err := cookiejar.New(&cookiejar.Options{
+					PublicSuffixList: publicsuffix.List,
+					Filename:         COOKIE_FILE,
+				})
 				if err != nil {
 					fmt.Println("cannot create cookiejar:", err)
 					commander.SetVar("error", err)
@@ -438,12 +450,21 @@ func main() {
 			} else if line == "--delete" || line == "--remove" {
 				client.SetCookieJar(nil)
 				fmt.Println("cookiejar removed")
+			} else if line == "--save" {
+				if jar := client.GetCookieJar(); jar != nil {
+					jar.(*cookiejar.Jar).Save()
+				}
 			} else if strings.HasPrefix(line, "-") {
 				fmt.Println("invalid option", line)
-				fmt.Println("usage: cookiejar [--add|--delete]")
-			} else if line != "" {
+				fmt.Println("usage: cookiejar [--add|--delete|--save]")
+			} else {
 				if client.GetCookieJar() == nil {
 					fmt.Println("no cookiejar")
+					return
+				}
+
+				if line == "" {
+					fmt.Println("usage: cookiejar baseurl")
 					return
 				}
 
@@ -460,8 +481,10 @@ func main() {
 					return
 				}
 
+				fmt.Println("Cookies:")
 				for _, cookie := range cookies {
-					fmt.Printf("  %s: %s\n", cookie.Name, cookie.Value)
+					//fmt.Println(simplejson.MustDumpString(cookie, simplejson.Indent(" ")))
+					fmt.Printf("  %v: %v\n", cookie.Name, cookie.Value)
 				}
 			}
 
