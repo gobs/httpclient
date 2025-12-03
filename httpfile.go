@@ -104,6 +104,10 @@ func OpenHttpFile(url string, headers map[string]string) (*HttpFile, error) {
 	return &f, nil
 }
 
+func (f *HttpFile) LogRequests() {
+	f.client.Transport = &LoggingTransport{&http.Transport{}, true, false, false}
+}
+
 func (f *HttpFile) do(method string, headers map[string]string) (*http.Response, error) {
 retry_redir:
 	req, err := http.NewRequest(method, f.Url, nil)
@@ -138,18 +142,18 @@ retry_redir:
 			return res, err
 		}
 
-		if res.StatusCode == 403 {
-			if res.Header.Get("X-Cache") == "Error from cloudfront" {
-				log.Println(req, err)
+		if res.Header.Get("X-Cache") == "Error from cloudfront" {
+			log.Println(req, err)
 
-				retry++
+			retry++
 
-				if retry < HttpFileRetries {
-					log.Println("Retry", retry, "Sleep...")
-					time.Sleep(HttpFileRetryWait)
-					continue
-				}
-			} else if res.Header.Get("X-AMZ-Request-ID") != "" {
+			if retry < HttpFileRetries {
+				log.Println("Retry", retry, "Sleep...")
+				time.Sleep(HttpFileRetryWait)
+				continue
+			}
+		} else if res.StatusCode == 403 {
+			if res.Header.Get("X-AMZ-Request-ID") != "" {
 				var buf [256]byte
 				n, err := res.Body.Read(buf[:])
 				if err == nil {
@@ -223,7 +227,12 @@ func (f *HttpFile) readAt(p []byte, off int64) (int, error) {
 		return 0, io.EOF
 
 	case resp.StatusCode != http.StatusPartialContent:
-		DebugLog(f.Debug).Println("readAt error", resp.Status)
+		if f.Debug {
+			body, _ := io.ReadAll(resp.Body)
+			DebugLog(f.Debug).Printf("readAt error %v, range %v, headers %v, body %v",
+				resp.Status, bytes_range, resp.Header, string(body))
+		}
+
 		return 0, &HttpFileError{Err: fmt.Errorf("Unexpected Status %s", resp.Status)}
 	}
 
