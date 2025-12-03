@@ -63,16 +63,31 @@ var HttpFileRetryWait = 60 * time.Second
 
 // Creates an HttpFile object. At this point the "file" is "open"
 func OpenHttpFile(url string, headers map[string]string) (*HttpFile, error) {
+	var redirectURL string
+
 	client := &http.Client{
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			return NoRedirect
+			if len(via) >= 10 { // Prevent too many redirects
+				return fmt.Errorf("stopped after 10 redirects")
+			}
+
+			l := len(via)
+			log.Println("redirect", l, ":", req.URL)
+			req.Header = via[l-1].Header
+			redirectURL = req.URL.String()
+			return nil // Allow the redirect
 		},
+
+		//Transport: LoggedTransport(&http.Transport{}, false, false, false),
 	}
 
 	f := HttpFile{Url: url, Headers: headers, origUrl: url, client: client, pos: 0, flen: -1}
-
 	hmethod := "HEAD"
-	var hheaders map[string]string
+	hheaders := headersType{}
+
+	for k, v := range headers {
+		hheaders[k] = v
+	}
 
 	if HttpFileNoHead { // some servers don't support HEAD, try with a GET of 0 bytes (actually 1)
 		hmethod = "GET"
@@ -99,6 +114,11 @@ func OpenHttpFile(url string, headers map[string]string) (*HttpFile, error) {
 		f.flen = clen
 	} else {
 		return nil, &HttpFileError{Err: fmt.Errorf("Unexpected Status %s", resp.Status)}
+	}
+
+	if redirectURL != "" {
+		f.Url = redirectURL
+		f.origUrl = redirectURL
 	}
 
 	return &f, nil
